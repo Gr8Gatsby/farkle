@@ -28,10 +28,8 @@ struct NewGameView: View {
     private var canStart: Bool { validPlayerCount >= 2 }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            PaperBackground()
+        NavigationStack {
             VStack(spacing: 0) {
-                topBar
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         (
@@ -46,11 +44,28 @@ struct NewGameView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .scrollIndicators(.hidden)
 
                 bottomCTA
             }
+            .background(PaperBackground())
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .font(.ui(14))
+                        .foregroundStyle(Color.ink2)
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("NEW GAME")
+                        .font(.ui(11, weight: .semibold))
+                        .tracking(1.4)
+                        .foregroundStyle(Color.ink3)
+                }
+            }
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
         }
         .onAppear {
             targetScore = defaultTargetScore
@@ -73,24 +88,6 @@ struct NewGameView: View {
         } message: {
             Text("Between 1,000 and 50,000, in steps of 500.")
         }
-    }
-
-    private var topBar: some View {
-        HStack {
-            Button("Cancel") { dismiss() }
-                .font(.ui(14))
-                .foregroundStyle(Color.ink2)
-            Spacer()
-            Text("NEW GAME")
-                .font(.ui(11, weight: .semibold))
-                .tracking(1.4)
-                .foregroundStyle(Color.ink3)
-            Spacer()
-            Color.clear.frame(width: 50)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 6)
-        .padding(.bottom, 4)
     }
 
     private var playerList: some View {
