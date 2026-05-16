@@ -14,6 +14,9 @@ struct NewGameView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("default.targetScore") private var defaultTargetScore = 10000
     @AppStorage("default.rulesData") private var defaultRulesData = Data()
+    /// Bumped when shipped HouseRules defaults change so a previously cached
+    /// blob picks up the new fields. Current generation: 1 (Two-triples on).
+    @AppStorage("default.rulesVersion") private var rulesVersion = 0
     @Query(sort: \Game.createdAt, order: .reverse) private var pastGames: [Game]
 
     @State private var players: [NewGameDraftPlayer] = []
@@ -72,6 +75,7 @@ struct NewGameView: View {
             if let decoded = try? JSONDecoder().decode(HouseRules.self, from: defaultRulesData) {
                 rules = decoded
             }
+            migrateRulesIfNeeded()
             if players.isEmpty {
                 players = initialPlayers()
             }
@@ -276,6 +280,17 @@ struct NewGameView: View {
                 .background(.ultraThinMaterial)
                 .overlay(Rectangle().fill(Color.walnut.opacity(0.10)).frame(height: 0.5), alignment: .top)
         )
+    }
+
+    /// Apply changes in shipped default HouseRules to a previously cached blob.
+    /// Versions:
+    ///   1 — Two-triples flipped on.
+    private func migrateRulesIfNeeded() {
+        if rulesVersion < 1 {
+            rules.twoTriples = true
+            if let data = try? JSONEncoder().encode(rules) { defaultRulesData = data }
+            rulesVersion = 1
+        }
     }
 
     /// Build the starting roster. Reuse the last game's player names + avatar colors

@@ -3,6 +3,10 @@ import SwiftData
 
 @main
 struct FarkleApp: App {
+    init() {
+        DefaultsMigrator.runIfNeeded()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
