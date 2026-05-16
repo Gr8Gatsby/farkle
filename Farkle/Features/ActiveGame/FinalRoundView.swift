@@ -442,28 +442,26 @@ struct FinalRoundView: View {
     // MARK: bottom bar
 
     private var bottomBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Button {
                 showBustConfirm = true
             } label: {
-                VStack(spacing: 1) {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16, weight: .bold))
                     Text("FARKLE")
-                        .font(.ui(10, weight: .bold))
-                        .tracking(1.2)
-                    Text("Bust turn")
-                        .font(.display(14, italic: true))
+                        .font(.display(22, italic: true))
                 }
-                .foregroundStyle(Color.crimson)
+                .foregroundStyle(Color.paper)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
-                .background(Color.crimson.opacity(0.18))
+                .background(Color.crimson)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color.crimson.opacity(0.40), lineWidth: 0.5)
-                )
+                .shadow(color: Color.crimson.opacity(0.55), radius: 0, x: 0, y: 3)
+                .shadow(color: Color.black.opacity(0.25), radius: 10, x: 0, y: 5)
             }
             .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
 
             Button {
                 if canBank { showBankConfirm = true }
