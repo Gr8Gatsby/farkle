@@ -40,8 +40,9 @@ Phone tracks scores; dice stay on the table.
 - House rules (toggleable, defaults in parens):
   - Three pairs = 1,500 (on)
   - Straight 1–6 = 1,500 (on)
-  - Two triples = 2,500 (off)
+  - Two triples = 2,500 (on)
   - Must open with 500 (on)
+- The New Game screen prefills with the players from the most recent game (names + avatar colors). The user can edit any row, remove rows (down to one), or add up to eight.
 
 ### 3.3 Turn order
 - Players roll in the order they were added during setup.
@@ -216,3 +217,4 @@ None at spec time. Will be added here as they arise.
 ## Change log
 - 2026-05-15 — Initial draft based on design bundle handoff (Felt & Bone system), targeting SwiftUI iOS 17+, Paper theme default, scope = Core + Helper + History/Stats.
 - 2026-05-15 — v1 implementation landed on `feature/initial-implementation`. All 11 screens built; 21 scoring+flow unit tests passing; build green via `xcodebuild`. Bust button now also opens a small confirm sheet (parity with Bank's confirmation, addressing the "I clicked it by accident" concern from the design chat).
+- 2026-05-16 — New Game refinements: prefill players (names + avatar colors) from the most recent game; flip Two-triples default to on (2,500); New Game sheet pinned to full-height `.large` detent with tighter top padding so the title and player rows sit near the top; trash icon now appears on every player row when there are at least two, so any seat can be removed.

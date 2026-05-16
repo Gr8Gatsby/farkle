@@ -48,15 +48,16 @@ final class ScoringTests: XCTestCase {
         XCTAssertEqual(engine.score(dice: [2,2,4,4,6,6]).total, 1500)
     }
 
-    func test_twoTriples_disabled_by_default() {
-        // 3 of 2s = 200, 3 of 3s = 300 → 500 (not 2500)
-        XCTAssertEqual(engine.score(dice: [2,2,2,3,3,3]).total, 500)
+    func test_twoTriples_enabled_by_default() {
+        // Default rules: two triples = 2,500
+        XCTAssertEqual(engine.score(dice: [2,2,2,3,3,3]).total, 2500)
     }
 
-    func test_twoTriples_enabled_scores2500() {
+    func test_twoTriples_disabled_falls_back_to_singleTriples() {
         var r = HouseRules.default
-        r.twoTriples = true
-        XCTAssertEqual(ScoreHelperEngine(rules: r).score(dice: [2,2,2,3,3,3]).total, 2500)
+        r.twoTriples = false
+        // 3 of 2s = 200, 3 of 3s = 300 → 500
+        XCTAssertEqual(ScoreHelperEngine(rules: r).score(dice: [2,2,2,3,3,3]).total, 500)
     }
 
     func test_mixed_threeOnes_andSingleFive() {

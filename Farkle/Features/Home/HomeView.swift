@@ -33,6 +33,8 @@ struct HomeView: View {
                 showNewGame = false
                 onStartNew(game)
             }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 

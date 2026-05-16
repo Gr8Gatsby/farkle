@@ -14,11 +14,9 @@ struct NewGameView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("default.targetScore") private var defaultTargetScore = 10000
     @AppStorage("default.rulesData") private var defaultRulesData = Data()
+    @Query(sort: \Game.createdAt, order: .reverse) private var pastGames: [Game]
 
-    @State private var players: [NewGameDraftPlayer] = [
-        NewGameDraftPlayer(name: "", avatarIndex: 0),
-        NewGameDraftPlayer(name: "", avatarIndex: 1)
-    ]
+    @State private var players: [NewGameDraftPlayer] = []
     @State private var targetScore = 10000
     @State private var rules: HouseRules = .default
     @State private var showCustomTarget = false
@@ -30,23 +28,23 @@ struct NewGameView: View {
     private var canStart: Bool { validPlayerCount >= 2 }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             PaperBackground()
             VStack(spacing: 0) {
                 topBar
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 20) {
                         (
                             Text("Who's ").font(.display(38)).foregroundStyle(Color.ink) +
                             Text("playing?").font(.display(38, italic: true)).foregroundStyle(Color.walnut)
                         )
-                        .padding(.top, 8)
 
                         playerList
                         targetSection
                         rulesSection
                     }
                     .padding(.horizontal, 20)
+                    .padding(.top, 8)
                     .padding(.bottom, 24)
                 }
                 .scrollIndicators(.hidden)
@@ -58,6 +56,9 @@ struct NewGameView: View {
             targetScore = defaultTargetScore
             if let decoded = try? JSONDecoder().decode(HouseRules.self, from: defaultRulesData) {
                 rules = decoded
+            }
+            if players.isEmpty {
+                players = initialPlayers()
             }
         }
         .alert("Custom target", isPresented: $showCustomTarget) {
@@ -80,15 +81,16 @@ struct NewGameView: View {
                 .font(.ui(14))
                 .foregroundStyle(Color.ink2)
             Spacer()
-            Text("STEP 1 OF 1")
-                .font(.ui(12))
-                .tracking(1)
+            Text("NEW GAME")
+                .font(.ui(11, weight: .semibold))
+                .tracking(1.4)
                 .foregroundStyle(Color.ink3)
             Spacer()
             Color.clear.frame(width: 50)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 12)
+        .padding(.horizontal, 20)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
 
     private var playerList: some View {
@@ -141,15 +143,19 @@ struct NewGameView: View {
                 .font(.ui(17, weight: .medium))
                 .foregroundStyle(Color.ink)
                 .textInputAutocapitalization(.words)
-            if players.count > 2 {
+            if players.count > 1 {
                 Button {
+                    let idx = players.firstIndex(where: { $0.id == player.wrappedValue.id })
                     players.removeAll { $0.id == player.wrappedValue.id }
+                    if let idx { reassignAvatarIndexes(after: idx) }
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 14))
+                        .frame(width: 36, height: 36)
                         .foregroundStyle(Color.ink3)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(player.wrappedValue.name.isEmpty ? "player" : player.wrappedValue.name)")
             }
         }
         .padding(.horizontal, 14)
@@ -273,6 +279,30 @@ struct NewGameView: View {
                 .background(.ultraThinMaterial)
                 .overlay(Rectangle().fill(Color.walnut.opacity(0.10)).frame(height: 0.5), alignment: .top)
         )
+    }
+
+    /// Build the starting roster. Reuse the last game's player names + avatar colors
+    /// so a recurring crew doesn't re-type names every session. Falls back to two
+    /// empty rows if there's no history yet.
+    private func initialPlayers() -> [NewGameDraftPlayer] {
+        if let last = pastGames.first {
+            let drafts = last.orderedPlayers.map {
+                NewGameDraftPlayer(name: $0.name, avatarIndex: $0.avatarIndex)
+            }
+            if !drafts.isEmpty { return drafts }
+        }
+        return [
+            NewGameDraftPlayer(name: "", avatarIndex: 0),
+            NewGameDraftPlayer(name: "", avatarIndex: 1)
+        ]
+    }
+
+    /// After a row is removed, re-shift avatar indexes from the removal point on
+    /// so avatar colors stay tied to seat order rather than going stale.
+    private func reassignAvatarIndexes(after removedIndex: Int) {
+        for i in removedIndex..<players.count {
+            players[i].avatarIndex = i
+        }
     }
 
     private func startGame() {
