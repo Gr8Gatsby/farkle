@@ -32,32 +32,31 @@ several apps using it). Pick whichever the App Store will give you.
 
 (160 chars)
 
-### Description  (~1,500 chars — Apple allows 4,000, but shorter reads better)
+### Description  (~2,200 chars — Apple allows 4,000, but shorter reads better)
 
 ```
-Farkle is a clean, ad-free score-keeper for the dice game your family already plays. No accounts. No ads. No analytics. Just the score sheet — done right.
+Farkle, the way your family already plays it — but on your phone, and without anyone yelling "wait, I had a hot dice three rolls ago."
 
-WHAT IT DOES
-• Tracks 2–8 players across full Farkle games with running totals, undo, and edit.
-• Quick-add chips for the common scores (+50, +100, +300, +500, +1000) plus a keypad for anything else.
-• Score Helper cheat sheet: every Farkle combo with its value, tap to add.
-• House rules per game: three pairs, straight 1–6, two triplets, 4-of-a-kind-with-a-pair, must-open-with-500.
-• Final round done right: the trigger player doesn't get another turn, every other player gets exactly one more, with a "WINS!" / "SHORT BY N" preview before each bank.
-• A persistent celebration screen for the winner with a trophy, the final standings, and a portrait "story card" image you can share to Messages, Instagram, AirDrop — or save straight to Photos.
+This is a score sheet. That's it. No ads. No accounts. No "Premium Plus Gold." No analytics quietly clocking how often you Farkle. We took the warm part of game night — pencil on a paper sheet, the slap of dice on the table, the friendly debate about whether three pairs really counts — and put it on a phone without losing any of that.
 
-LIVE SCOREBOARD (no internet needed)
-• Friends nearby with the app on the same Wi-Fi can watch the score sheet update live — a felt-green scoreboard with animated tickers and pop-up flavor messages.
-• Joiners pick which player they are (or just watch), and can attach a photo to their seat so everyone sees real faces, not initials.
-• 4-digit room code as a backup for tricky networks. All peer-to-peer. Nothing leaves your devices.
+THE SCORE-KEEPING BIT
+• 2 to 8 players. Your cousin showed up late? Add them mid-round-one and they slot right in.
+• Quick-add chips for the common scores (+50, +100, +300, +500, +1,000). Custom keypad for the weird ones.
+• Score Helper — every Farkle combo with its value, tap to add. We don't count your dice for you. You still get to feel smart.
+• Undo and edit anything. Banked when you meant Farkle? Tap the row in Recent Actions and fix it. No yelling required.
+• House rules per game: three pairs, straight 1–6, two triplets, four-of-a-kind with a pair, must-open-with-500. Your table, your rules.
 
-DESIGN
-A handmade-feeling palette of cream paper, walnut wood, and casino felt green. Hand-drawn dice with bone-and-pip detailing. The trophy is hand-drawn too.
+THE FINAL ROUND
+The person who crossed 10,000 doesn't get another turn. Everyone else gets exactly one more. The screen tells each rolling player precisely what they need ("BEAT 10,250"), and the Bank preview lights up "WINS!" or "SHORT BY 350" the second you tap a chip. No more mental math at 11pm.
 
-PRIVACY
-Zero data collection. No ads, no analytics, no third-party SDKs. The Local Network, Photos, and Contacts permissions are only used when you tap something that needs them, and never to read your stuff.
+THE CELEBRATION
+A real winner screen — trophy, ribbon, count-up score, the lot. Stays on screen until you dismiss it. Tap Share and out pops a portrait card you can drop into the family group chat. (They'll pretend to be tired of it. They'll actually love it.)
 
-FREE FOREVER
-There's no premium tier. There's no plan to add one. The app is free.
+THE LIVE SCOREBOARD
+Friends nearby with the app on the same Wi-Fi can watch the whole game on a read-only felt-green scoreboard, with animated score tickers and pop-up commentary ("Maya passed Theo!" "Tough break for Jules."). Joiners pick which seat is them and can attach a photo so nobody's just a colored letter anymore. Peer-to-peer. No internet needed. Nothing leaves your devices.
+
+THE FINE PRINT
+Free. Forever. No ads, no subscription, no upsell. If we ever change that, we'll change the app's name first.
 ```
 
 ### Keywords  (100 char total, comma-separated, no spaces)
