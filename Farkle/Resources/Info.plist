@@ -18,6 +18,13 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_farkle-game._tcp</string>
+		<string>_farkle-game._udp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Farkle uses local networking so friends nearby can watch your score live. Nothing leaves your devices.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>InstrumentSerif-Regular.ttf</string>

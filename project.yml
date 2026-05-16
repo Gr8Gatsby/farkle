@@ -27,6 +27,10 @@ targets:
       properties:
         UILaunchScreen:
           UIColorName: PaperBackground
+        NSLocalNetworkUsageDescription: "Farkle uses local networking so friends nearby can watch your score live. Nothing leaves your devices."
+        NSBonjourServices:
+          - _farkle-game._tcp
+          - _farkle-game._udp
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UISupportedInterfaceOrientations~ipad:

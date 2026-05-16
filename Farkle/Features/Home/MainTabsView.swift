@@ -6,6 +6,7 @@ enum MainTab: Hashable { case play, history, stats, settings }
 struct MainTabsView: View {
     var onResume: (Game) -> Void
     var onStartNew: (Game) -> Void
+    var onJoinGame: () -> Void
 
     @State private var selection: MainTab = .play
 
@@ -14,7 +15,7 @@ struct MainTabsView: View {
             Group {
                 switch selection {
                 case .play:
-                    HomeView(onResume: onResume, onStartNew: onStartNew)
+                    HomeView(onResume: onResume, onStartNew: onStartNew, onJoinGame: onJoinGame)
                 case .history:
                     HistoryView()
                 case .stats:

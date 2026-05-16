@@ -7,6 +7,7 @@ import SwiftData
 struct FinalRoundView: View {
     @Bindable var game: Game
     var onExit: () -> Void
+    @Bindable var session: FarkleNetSession
 
     @Environment(\.modelContext) private var context
     @State private var showBankConfirm = false
@@ -14,6 +15,7 @@ struct FinalRoundView: View {
     @State private var showScoreHelper = false
     @State private var showKeypad = false
     @State private var showExitConfirm = false
+    @State private var showInvite = false
     @State private var markHotDice = false
     @State private var actionBeingEdited: ActionLogEntry?
 
@@ -123,8 +125,16 @@ struct FinalRoundView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(Color.paper)
         }
+        .sheet(isPresented: $showInvite) {
+            InviteViewersSheet(session: session) { showInvite = false }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
         .alert("Leave game?", isPresented: $showExitConfirm) {
-            Button("Leave", role: .destructive) { onExit() }
+            Button("Leave", role: .destructive) {
+                session.stopHosting()
+                onExit()
+            }
             Button("Stay", role: .cancel) {}
         } message: {
             Text("Your game is saved. You can resume it from Home.")
@@ -141,7 +151,7 @@ struct FinalRoundView: View {
     // MARK: top bar
 
     private var topBar: some View {
-        HStack {
+        HStack(spacing: 8) {
             Button {
                 showExitConfirm = true
             } label: {
@@ -153,6 +163,7 @@ struct FinalRoundView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .buttonStyle(.plain)
+            inviteButton
             Spacer()
             VStack(spacing: 0) {
                 Text("FINAL ROUND · \(game.finalRoundTurnsRemaining) LEFT")
@@ -491,6 +502,33 @@ struct FinalRoundView: View {
         .padding(.horizontal, 14)
         .padding(.top, 12)
         .padding(.bottom, 28)
+    }
+
+    private var inviteButton: some View {
+        Button {
+            showInvite = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: session.role == .host && session.connectedPeerCount > 0
+                      ? "dot.radiowaves.left.and.right"
+                      : "person.2.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                if session.role == .host {
+                    Text("\(session.connectedPeerCount)")
+                        .font(.mono(11, weight: .bold))
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 36)
+            .background(session.role == .host && session.connectedPeerCount > 0
+                        ? Color.gold.opacity(0.85)
+                        : Color.white.opacity(0.10))
+            .foregroundStyle(session.role == .host && session.connectedPeerCount > 0
+                             ? Color.walnut
+                             : Color.paper)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private var canBank: Bool {

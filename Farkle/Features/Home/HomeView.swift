@@ -4,6 +4,7 @@ import SwiftData
 struct HomeView: View {
     var onResume: (Game) -> Void
     var onStartNew: (Game) -> Void
+    var onJoinGame: () -> Void
 
     @Environment(\.modelContext) private var context
     @Query(sort: \Game.createdAt, order: .reverse) private var allGames: [Game]
@@ -22,6 +23,7 @@ struct HomeView: View {
                         resumeCard(game: game).padding(.horizontal, 16).padding(.top, 24)
                     }
                     newGameButton.padding(.horizontal, 16).padding(.top, 12)
+                    joinGameButton.padding(.horizontal, 16).padding(.top, 10)
                     recentGames.padding(.top, 24)
                     Color.clear.frame(height: 100)
                 }
@@ -147,6 +149,42 @@ struct HomeView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(Color.walnut.opacity(0.30), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var joinGameButton: some View {
+        Button { onJoinGame() } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.felt)
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.paper)
+                }
+                .frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Join a game")
+                        .font(.display(22, italic: true))
+                        .foregroundStyle(Color.ink)
+                    Text("Watch a friend's live scoreboard nearby.")
+                        .font(.ui(12))
+                        .foregroundStyle(Color.ink3)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.ink3)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.paperSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.walnut.opacity(0.10), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)

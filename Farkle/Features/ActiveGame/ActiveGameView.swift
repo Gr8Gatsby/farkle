@@ -11,8 +11,10 @@ struct ActiveGameView: View {
     @State private var showScoreHelper = false
     @State private var showKeypad = false
     @State private var showExitConfirm = false
+    @State private var showInvite = false
     @State private var markHotDice = false
     @State private var actionBeingEdited: ActionLogEntry?
+    @State private var netSession = FarkleNetSession()
 
     private var engine: GameEngine { GameEngine(game: game, context: context) }
 
@@ -25,7 +27,8 @@ struct ActiveGameView: View {
                          onExit: onExit,
                          onRematch: rematch)
         } else if game.isInFinalRound {
-            FinalRoundView(game: game, onExit: onExit)
+            FinalRoundView(game: game, onExit: onExit, session: netSession)
+                .hostBroadcaster(game: game, session: netSession)
         } else {
             ZStack {
                 PaperBackground()
@@ -126,17 +129,28 @@ struct ActiveGameView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.paper)
             }
+            .sheet(isPresented: $showInvite) {
+                InviteViewersSheet(session: netSession) {
+                    showInvite = false
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
             .alert("Leave game?", isPresented: $showExitConfirm) {
-                Button("Leave", role: .destructive) { onExit() }
+                Button("Leave", role: .destructive) {
+                    netSession.stopHosting()
+                    onExit()
+                }
                 Button("Stay", role: .cancel) {}
             } message: {
                 Text("Your game is saved. You can resume it from Home.")
             }
+            .hostBroadcaster(game: game, session: netSession)
         }
     }
 
     private var topBar: some View {
-        HStack {
+        HStack(spacing: 8) {
             Button {
                 showExitConfirm = true
             } label: {
@@ -148,6 +162,7 @@ struct ActiveGameView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .buttonStyle(.plain)
+            inviteButton(dark: false)
             Spacer()
             VStack(spacing: 0) {
                 if game.isInFinalRound {
@@ -260,6 +275,47 @@ struct ActiveGameView: View {
         .padding(.horizontal, 14)
         .padding(.top, 12)
         .padding(.bottom, 28)
+    }
+
+    @ViewBuilder
+    private func inviteButton(dark: Bool) -> some View {
+        Button {
+            startHostingIfNeeded()
+            showInvite = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: netSession.role == .host && netSession.connectedPeerCount > 0
+                      ? "dot.radiowaves.left.and.right"
+                      : "person.2.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                if netSession.role == .host {
+                    Text("\(netSession.connectedPeerCount)")
+                        .font(.mono(11, weight: .bold))
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 36)
+            .background(netSession.role == .host && netSession.connectedPeerCount > 0
+                        ? Color.felt.opacity(0.85)
+                        : (dark ? Color.white.opacity(0.10) : Color.walnut.opacity(0.08)))
+            .foregroundStyle(netSession.role == .host && netSession.connectedPeerCount > 0
+                             ? Color.paper
+                             : (dark ? Color.paper : Color.ink))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Invite viewers")
+    }
+
+    private func startHostingIfNeeded() {
+        guard netSession.role == .idle else { return }
+        let snapshot = GameSnapshot(
+            game: game,
+            seq: 0,
+            roomCode: RoomCode.generate(),
+            hostName: UIDevice.current.name
+        )
+        netSession.startHosting(initialSnapshot: snapshot)
     }
 
     private func finalRoundHint(newTotal: Int, bar: Int) -> String {
