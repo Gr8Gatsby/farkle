@@ -28,6 +28,7 @@ struct GameEngine {
         if game.finalRoundTriggeredByPlayerID == nil, player.bankedScore >= game.targetScore {
             game.finalRoundTriggeredByPlayerID = player.id
             game.finalRoundTurnsRemaining = max(0, game.orderedPlayers.count - 1)
+            game.finalRoundAnnouncementShown = false
             let trigger = ActionLogEntry(playerID: player.id,
                                          kind: .startFinalRound,
                                          amount: 0,
@@ -118,6 +119,7 @@ struct GameEngine {
         game.pendingRollCount = 0
         game.finalRoundTriggeredByPlayerID = nil
         game.finalRoundTurnsRemaining = 0
+        game.finalRoundAnnouncementShown = true
         game.winnerPlayerID = nil
         game.endedAt = nil
 
@@ -144,6 +146,7 @@ struct GameEngine {
             case .startFinalRound:
                 game.finalRoundTriggeredByPlayerID = entry.playerID
                 game.finalRoundTurnsRemaining = max(0, players.count - 1)
+                game.finalRoundAnnouncementShown = false
             case .endGame:
                 game.endedAt = entry.timestamp
                 game.winnerPlayerID = entry.playerID
@@ -170,6 +173,27 @@ struct GameEngine {
         } else {
             game.activePlayerIndex = (game.activePlayerIndex + 1) % players.count
         }
+    }
+
+    /// Called after the user dismisses the final-round announcement screen.
+    func markFinalRoundAnnouncementShown() {
+        game.finalRoundAnnouncementShown = true
+        save()
+    }
+
+    /// Replace the amount on a past bank action. The action keeps its slot in the log,
+    /// player order isn't affected; derived totals are rebuilt by replay. No-op for
+    /// non-bank actions and for non-positive amounts.
+    @discardableResult
+    func setActionAmount(actionID: UUID, newAmount: Int) -> Bool {
+        guard let target = game.actions.first(where: { $0.id == actionID }),
+              target.kind == .bank,
+              newAmount > 0 else { return false }
+        target.amount = newAmount
+        target.pendingTurnAtAction = newAmount
+        rebuildDerivedState()
+        save()
+        return true
     }
 
     func renamePlayer(_ player: Player, to newName: String) {

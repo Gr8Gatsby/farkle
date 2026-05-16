@@ -28,11 +28,22 @@ struct NowRollingBanner: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("BANKED")
-                            .font(.ui(9, weight: .bold))
-                            .tracking(1.4)
-                            .foregroundStyle(Color.walnutInk.opacity(0.7))
-                        MonoScoreText(value: player.bankedScore, size: 18, weight: .bold, color: .walnutInk)
+                        if game.isInFinalRound, let bar = game.scoreToBeat {
+                            Text("BEAT")
+                                .font(.ui(9, weight: .bold))
+                                .tracking(1.4)
+                                .foregroundStyle(Color.gold)
+                            MonoScoreText(value: bar, size: 18, weight: .bold, color: .gold2)
+                            Text("you: \(player.bankedScore.formatted())")
+                                .font(.mono(10))
+                                .foregroundStyle(Color.walnutInk.opacity(0.7))
+                        } else {
+                            Text("BANKED")
+                                .font(.ui(9, weight: .bold))
+                                .tracking(1.4)
+                                .foregroundStyle(Color.walnutInk.opacity(0.7))
+                            MonoScoreText(value: player.bankedScore, size: 18, weight: .bold, color: .walnutInk)
+                        }
                     }
                 }
                 .padding(.horizontal, 14)

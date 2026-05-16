@@ -53,6 +53,64 @@ final class GameFlowTests: XCTestCase {
         XCTAssertEqual(game.activePlayer?.name, "Maya")
     }
 
+    func test_targetHit_doesNotGiveTriggerAnotherTurn() {
+        let game = makeGame(target: 1000, playerNames: ["Maya", "Jules", "Theo"])
+        let engine = GameEngine(game: game, context: context)
+        engine.addToPending(1000)
+        engine.bank()  // Maya triggers final round
+        XCTAssertEqual(game.activePlayer?.name, "Jules", "After trigger, the next seat is up — not Maya again.")
+        XCTAssertEqual(game.finalRoundTurnsRemaining, 2)
+        XCTAssertFalse(game.finalRoundAnnouncementShown, "Announcement should be pending")
+    }
+
+    func test_finalRoundAnnouncement_canBeDismissed() {
+        let game = makeGame(target: 1000)
+        let engine = GameEngine(game: game, context: context)
+        engine.addToPending(1000)
+        engine.bank()
+        XCTAssertFalse(game.finalRoundAnnouncementShown)
+        engine.markFinalRoundAnnouncementShown()
+        XCTAssertTrue(game.finalRoundAnnouncementShown)
+    }
+
+    func test_scoreToBeat_reflectsLeadingTotal() {
+        let game = makeGame(target: 1000, playerNames: ["Maya", "Jules"])
+        let engine = GameEngine(game: game, context: context)
+        engine.addToPending(1000)
+        engine.bank()  // Maya → 1000, triggers
+        XCTAssertEqual(game.scoreToBeat, 1000)
+        // Jules takes her final turn and overtakes
+        engine.addToPending(1200)
+        engine.bank()
+        // Game ends; scoreToBeat is nil after endedAt set
+        XCTAssertNotNil(game.endedAt)
+        XCTAssertEqual(game.winnerPlayerID, game.orderedPlayers[1].id) // Jules wins
+    }
+
+    func test_setActionAmount_editsPastBank() {
+        let game = makeGame()
+        let engine = GameEngine(game: game, context: context)
+        engine.addToPending(500)
+        engine.bank()
+        engine.addToPending(600)  // above must-open-with-500
+        engine.bank()
+        // Maya = 500, Jules = 600. Edit Maya's bank up to 800.
+        let mayaBankID = game.orderedActions.first(where: { $0.kind == .bank })!.id
+        engine.setActionAmount(actionID: mayaBankID, newAmount: 800)
+        XCTAssertEqual(game.orderedPlayers[0].bankedScore, 800)
+        XCTAssertEqual(game.orderedPlayers[1].bankedScore, 600, "Jules's later bank must remain intact after the edit")
+    }
+
+    func test_setActionAmount_refusesBustEdit() {
+        let game = makeGame()
+        let engine = GameEngine(game: game, context: context)
+        engine.addToPending(400)
+        engine.bust()
+        let bustID = game.orderedActions.first(where: { $0.kind == .bust })!.id
+        let didEdit = engine.setActionAmount(actionID: bustID, newAmount: 200)
+        XCTAssertFalse(didEdit)
+    }
+
     func test_targetHitTriggersFinalRound_andEndsAfterOthersPlay() {
         let game = makeGame(target: 1000)
         let engine = GameEngine(game: game, context: context)

@@ -12,6 +12,7 @@ struct ActiveGameView: View {
     @State private var showKeypad = false
     @State private var showExitConfirm = false
     @State private var markHotDice = false
+    @State private var actionBeingEdited: ActionLogEntry?
 
     private var engine: GameEngine { GameEngine(game: game, context: context) }
 
@@ -23,6 +24,10 @@ struct ActiveGameView: View {
             },
                          onExit: onExit,
                          onRematch: rematch)
+        } else if game.isInFinalRound && !game.finalRoundAnnouncementShown {
+            FinalRoundAnnouncement(game: game) {
+                engine.markFinalRoundAnnouncementShown()
+            }
         } else {
             ZStack {
                 PaperBackground()
@@ -41,7 +46,7 @@ struct ActiveGameView: View {
                             )
                             StandingsLadder(game: game)
                             RecentActionsLog(game: game,
-                                             onUndo: { id in engine.undo(actionID: id) })
+                                             onTap: { entry in actionBeingEdited = entry })
                             Color.clear.frame(height: 8)
                         }
                         .padding(.horizontal, 14)
@@ -103,6 +108,24 @@ struct ActiveGameView: View {
                     onCancel: { showKeypad = false }
                 )
                 .presentationDetents([.fraction(0.55)])
+                .presentationBackground(Color.paper)
+            }
+            .sheet(item: $actionBeingEdited) { entry in
+                EditActionSheet(
+                    game: game,
+                    action: entry,
+                    onSave: { newAmount in
+                        engine.setActionAmount(actionID: entry.id, newAmount: newAmount)
+                        actionBeingEdited = nil
+                    },
+                    onUndo: {
+                        engine.undo(actionID: entry.id)
+                        actionBeingEdited = nil
+                    },
+                    onCancel: { actionBeingEdited = nil }
+                )
+                .presentationDetents([.fraction(0.7)])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(Color.paper)
             }
             .alert("Leave game?", isPresented: $showExitConfirm) {
@@ -200,8 +223,15 @@ struct ActiveGameView: View {
                             .tracking(1.4)
                             .opacity(0.75)
                         if canBank, let player = game.activePlayer {
-                            Text("+\(game.pendingTurnScore) → \((player.bankedScore + game.pendingTurnScore).formatted())")
+                            let newTotal = player.bankedScore + game.pendingTurnScore
+                            Text("+\(game.pendingTurnScore) → \(newTotal.formatted())")
                                 .font(.display(20, italic: true))
+                            if let bar = game.scoreToBeat {
+                                Text(finalRoundHint(newTotal: newTotal, bar: bar))
+                                    .font(.ui(10, weight: .semibold))
+                                    .tracking(0.6)
+                                    .opacity(0.85)
+                            }
                         } else if !canBank, let mustOpen = game.rules.mustOpenWith,
                                   let player = game.activePlayer, player.bankedScore == 0 {
                             Text("Must open with \(mustOpen)")
@@ -232,6 +262,12 @@ struct ActiveGameView: View {
         .padding(.horizontal, 14)
         .padding(.top, 12)
         .padding(.bottom, 28)
+    }
+
+    private func finalRoundHint(newTotal: Int, bar: Int) -> String {
+        if newTotal > bar { return "WINS! ▸" }
+        let need = bar - newTotal + 1
+        return "SHORT BY \(need.formatted())"
     }
 
     private var canBank: Bool {

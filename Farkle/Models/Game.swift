@@ -16,6 +16,9 @@ final class Game {
     var pendingRollCount: Int
     var finalRoundTriggeredByPlayerID: UUID?
     var finalRoundTurnsRemaining: Int
+    /// False from the moment a final-round trigger is logged until the
+    /// player dismisses the "X hits the target" announcement screen.
+    var finalRoundAnnouncementShown: Bool = true
     var winnerPlayerID: UUID?
 
     var rules: HouseRules {
@@ -32,6 +35,26 @@ final class Game {
         let ordered = orderedPlayers
         guard !ordered.isEmpty else { return nil }
         return ordered[activePlayerIndex % ordered.count]
+    }
+
+    /// During the final round, the score the next bank has to exceed in order to win.
+    /// Returns the highest banked total among all players (so if someone overtakes the
+    /// trigger player mid-final-round, the bar moves up).
+    var scoreToBeat: Int? {
+        guard isInFinalRound else { return nil }
+        return orderedPlayers.map(\.bankedScore).max()
+    }
+
+    /// Players who still have a turn in the final round, in turn order starting from
+    /// the next active seat.
+    var remainingFinalRoundPlayers: [Player] {
+        guard let trigger = finalRoundTriggeredByPlayerID else { return [] }
+        let ordered = orderedPlayers
+        guard let triggerIdx = ordered.firstIndex(where: { $0.id == trigger }) else { return [] }
+        let count = ordered.count
+        // Players in order starting after the trigger.
+        let rotated = (1..<count).map { ordered[(triggerIdx + $0) % count] }
+        return Array(rotated.prefix(finalRoundTurnsRemaining))
     }
 
     var currentRound: Int {
@@ -55,6 +78,7 @@ final class Game {
         self.pendingRollCount = 0
         self.finalRoundTriggeredByPlayerID = nil
         self.finalRoundTurnsRemaining = 0
+        self.finalRoundAnnouncementShown = true
         self.winnerPlayerID = nil
         self.players = players
     }

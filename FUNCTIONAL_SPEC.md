@@ -53,6 +53,14 @@ Phone tracks scores; dice stay on the table.
 - Players roll in the order they were added during setup.
 - After someone reaches the target, every remaining player gets exactly one more turn ("final round"). Highest total wins. Ties: the player who hit the target first wins.
 
+#### Final round (when the target is hit)
+- When a player banks a total ≥ the target, the **triggering player does not get another turn** — they're done.
+- Every other player gets exactly one more turn. Turn order continues normally.
+- A full-screen "FINAL ROUND" announcement is shown the moment the target is hit (named after the trigger player, with the score to beat and a list of remaining seats and how much each needs).
+- During the final round, the Now Rolling banner replaces "BANKED" with "BEAT: X" coaching, and the Bank-preview shows "WINS!" or "SHORT BY N" relative to the current high score.
+- The "score to beat" is the highest banked total at any moment — if a later player overtakes the trigger, the bar moves up for everyone after them.
+- After the last remaining player completes their turn, the highest total wins. Tie: trigger player wins (they got there first).
+
 ### 3.4 Scoring actions
 A turn is a sequence of one or more **rolls**. Each roll has a delta (positive integer). The user enters the turn total via:
 - **Quick-add chips** for common values: 50, 100, 150, 200, 300, 500, 1000.
@@ -108,7 +116,10 @@ The heart of the app. Layout (top to bottom):
    - "Score helper" link opens §4.6.
    - "Clear" link resets pending turn to 0 without ending the turn.
 4. **Standings ladder** — players ranked by banked score; current player marked with "ROLLING" pill; mini progress bar toward target.
-5. **Recent actions log** — last 5 banks/busts; each row shows player, action, amount, time-ago, and an undo affordance. Tapping a row prompts a one-tap undo of that specific action.
+5. **Recent actions log** — last 5 banks/busts; each row shows player, action, amount, and time-ago. Tapping a row opens an Edit/Undo sheet:
+   - **Edit**: for bank actions, the user can change the amount via keypad (fixes a mistyped score without losing turn order).
+   - **Undo**: removes the action (and everything after it) and replays state.
+   - **Cancel**: no change.
 6. **Bottom action bar**:
    - **Farkle** (secondary, crimson) — confirms then sets turn to 0 and passes.
    - **Bank** (primary, walnut) — shows "+450 → 4,700" preview math; opens §4.5.
@@ -228,3 +239,4 @@ None at spec time. Will be added here as they arise.
 - 2026-05-16 — Active Game polish: removed duplicate top safe-area padding so content sits right under the system bar (was leaving ~100pt of empty cream); enlarged the quick-add chip buttons (height 36→48, font 13→16) for a more tactile press. Score Helper rewritten from a dice-input calculator to a tappable scoresheet: each scoring combo in the rules is a row the player taps to accumulate; encourages players to spot their own hands instead of letting the phone do the math. Defaults migrator covers the change to the Two-triples house rule so cached preferences pick up the new default on first launch.
 - 2026-05-16 — Fix four/five/six-of-a-kind multipliers to match the standard Farkle rule (per Wikipedia and dicegamedepot/farkle.games): four = 2×, five = 3×, six = 4× (the three-of-a-kind value). The design bundle's cheat sheet used 2/4/8 (a less-common doubling variant). Updated in the scoring engine, the Rules cheat sheet, and the Score Helper rows; tests updated accordingly.
 - 2026-05-16 — Switch to the user's house variant. Three 1s = 300 (small bonus over the uniform face×100); three of any other face = face × 100; four / five / six of any face = fixed 1000 / 2000 / 3000. Added a new "4 of a kind with a pair = 1500" combo as a House Rule (default on; toggle in New Game and Settings). Score Helper restructured: per-face rows only for three-of-a-kind; four/five/six of a kind collapse to one row each since the value is face-independent. Defaults migrator bumped to v2 to enable the new combo on cached preferences.
+- 2026-05-16 — Final-round redesign. When a player banks past the target the game now shows a full-screen "FINAL ROUND" announcement (trigger player named, score to beat, remaining players each with the deficit they need to close). Trigger player explicitly does NOT get another turn. While the final round is active, the Now Rolling banner swaps "BANKED" for "BEAT: X" coaching and the Bank-preview shows "WINS!" / "SHORT BY N" relative to the current high score. The bar moves up if a later player overtakes the trigger. Recent Actions tap now opens an Edit/Undo sheet — bank amounts can be edited in place (e.g., correct a typo without losing turn order); bust actions can only be undone. Engine gains `setActionAmount(actionID:newAmount:)` and `markFinalRoundAnnouncementShown()`. Game model persists `finalRoundAnnouncementShown` so the announcement survives app restarts. 7 new tests cover the new paths.

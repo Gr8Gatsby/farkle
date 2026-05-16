@@ -2,7 +2,7 @@ import SwiftUI
 
 struct RecentActionsLog: View {
     let game: Game
-    var onUndo: (UUID) -> Void
+    var onTap: (ActionLogEntry) -> Void
 
     var body: some View {
         let recent = Array(game.orderedActions.reversed().prefix(5))
@@ -13,7 +13,7 @@ struct RecentActionsLog: View {
                 HStack {
                     SectionLabel(text: "Recent actions")
                     Spacer()
-                    Text("Tap to undo")
+                    Text("Tap to edit / undo")
                         .font(.ui(10, weight: .semibold))
                         .tracking(1.2)
                         .foregroundStyle(Color.ink3.opacity(0.7))
@@ -32,7 +32,7 @@ struct RecentActionsLog: View {
     private func row(entry: ActionLogEntry) -> some View {
         let player = game.players.first(where: { $0.id == entry.playerID })
         return Button {
-            onUndo(entry.id)
+            onTap(entry)
         } label: {
             HStack(spacing: 10) {
                 AvatarView(name: player?.name ?? "?", colorIndex: player?.avatarIndex ?? 0, size: 20)
@@ -72,7 +72,7 @@ struct RecentActionsLog: View {
                 Text(timeAgo(entry.timestamp))
                     .font(.mono(10))
                     .foregroundStyle(Color.ink3.opacity(0.7))
-                Image(systemName: "arrow.uturn.backward")
+                Image(systemName: "pencil")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.ink3.opacity(0.6))
             }
@@ -87,7 +87,7 @@ struct RecentActionsLog: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(player?.name ?? "Player") \(entry.kind == .bust ? "busted" : "banked \(entry.amount)")")
-        .accessibilityAction(named: "Undo this action") { onUndo(entry.id) }
+        .accessibilityAction(named: "Edit or undo this action") { onTap(entry) }
     }
 
     private func timeAgo(_ date: Date) -> String {
