@@ -23,3 +23,15 @@ xcodebuild test -project Farkle.xcodeproj -scheme Farkle -destination 'platform=
 
 ## Project layout
 See [DEV_DESIGN.md §2](DEV_DESIGN.md#2-repository-layout).
+
+## Regenerating the app icon
+
+The "Trio" app icon (three bone dice on cream paper) is rendered from a
+SwiftUI view via `ImageRenderer`. To regenerate every iOS size:
+
+```
+swift tools/generate-icons.swift
+```
+
+Output PNGs land in `Farkle/Resources/Assets.xcassets/AppIcon.appiconset/`,
+already wired up by `Contents.json`.
