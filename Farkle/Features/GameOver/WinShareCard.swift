@@ -1,12 +1,16 @@
 import SwiftUI
 
-/// A 1080×1080 felt-themed brag card used as the source for ImageRenderer.
+/// 1080×1920 portrait "story" card used as the source for ImageRenderer.
 /// Renders from a host-side `Game` or a joiner-side `GameSnapshot`.
+/// Paper-themed: cream background, walnut + gold accents, trophy crest.
 struct WinShareCard: View {
     let gameName: String
     let endedAt: Date?
     let players: [WinPlayer]
     let winnerID: UUID?
+    let rounds: Int
+    let durationLabel: String
+    let hotDiceCount: Int
     let photoFor: (UUID) -> Data?
 
     struct WinPlayer: Identifiable {
@@ -25,6 +29,19 @@ struct WinShareCard: View {
                       bankedScore: $0.bankedScore)
         }
         self.winnerID = game.winnerPlayerID
+        self.rounds = max(1, game.orderedActions
+            .filter { $0.kind == .bank || $0.kind == .bust }.count
+            / max(1, game.orderedPlayers.count))
+        let winnerPlayer = game.orderedPlayers.first(where: { $0.id == game.winnerPlayerID })
+        self.hotDiceCount = winnerPlayer?.hotDiceCount ?? 0
+        if let end = game.endedAt {
+            let s = end.timeIntervalSince(game.createdAt)
+            let h = Int(s) / 3600
+            let m = (Int(s) % 3600) / 60
+            self.durationLabel = h > 0 ? "\(h)h \(m)m" : "\(m)m"
+        } else {
+            self.durationLabel = "—"
+        }
         self.photoFor = photoFor
     }
 
@@ -37,6 +54,10 @@ struct WinShareCard: View {
                       bankedScore: $0.bankedScore)
         }
         self.winnerID = snapshot.winnerPlayerID
+        let bankBust = snapshot.recentActions.filter { $0.kind == .bank || $0.kind == .bust }.count
+        self.rounds = max(1, bankBust / max(1, snapshot.players.count))
+        self.hotDiceCount = snapshot.players.first(where: { $0.id == snapshot.winnerPlayerID })?.hotDiceCount ?? 0
+        self.durationLabel = "—"
         self.photoFor = { id in snapshot.photoData(for: id) }
     }
 
@@ -45,153 +66,216 @@ struct WinShareCard: View {
             ?? players.max(by: { $0.bankedScore < $1.bankedScore })
     }
 
-    private var standings: [WinPlayer] {
-        players.sorted { $0.bankedScore > $1.bankedScore }
-    }
-
-    var body: some View {
-        ZStack {
-            Color.felt
-            LinearGradient(
-                colors: [Color.white.opacity(0.08), .clear, Color.black.opacity(0.30)],
-                startPoint: .top, endPoint: .bottom
-            )
-
-            VStack(spacing: 36) {
-                VStack(spacing: 14) {
-                    Text("FARKLE")
-                        .font(.ui(28, weight: .bold))
-                        .tracking(8)
-                        .foregroundStyle(Color.gold)
-                    Text(gameName)
-                        .font(.display(40))
-                        .foregroundStyle(Color.paper)
-                }
-
-                if let winner {
-                    VStack(spacing: 22) {
-                        winnerCrest(winner: winner)
-                        (
-                            Text("\(winner.name)\n").font(.display(120, italic: true))
-                                .foregroundStyle(Color.paper) +
-                            Text("wins.").font(.display(120))
-                                .foregroundStyle(Color.gold2)
-                        )
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(-30)
-
-                        Text(winner.bankedScore.formatted())
-                            .font(.mono(72, weight: .bold))
-                            .foregroundStyle(Color.gold2)
-                    }
-                }
-
-                VStack(spacing: 14) {
-                    Text("FINAL STANDINGS")
-                        .font(.ui(22, weight: .bold))
-                        .tracking(5)
-                        .foregroundStyle(Color.paper.opacity(0.55))
-
-                    VStack(spacing: 0) {
-                        ForEach(Array(standings.enumerated()), id: \.element.id) { idx, p in
-                            HStack(spacing: 18) {
-                                Text("\(idx + 1)")
-                                    .font(.display(46, italic: true))
-                                    .foregroundStyle(idx == 0 ? Color.gold2 : Color.paper.opacity(0.55))
-                                    .frame(width: 56, alignment: .leading)
-                                AvatarView(name: p.name,
-                                           colorIndex: p.avatarIndex,
-                                           size: 60,
-                                           photoData: photoFor(p.id))
-                                Text(p.name)
-                                    .font(.ui(38, weight: .medium))
-                                    .foregroundStyle(Color.paper)
-                                Spacer()
-                                Text(p.bankedScore.formatted())
-                                    .font(.mono(38, weight: .bold))
-                                    .foregroundStyle(idx == 0 ? Color.gold2 : Color.paper)
-                            }
-                            .padding(.horizontal, 28)
-                            .padding(.vertical, 16)
-                            if idx < standings.count - 1 {
-                                Rectangle().fill(Color.paper.opacity(0.10))
-                                    .frame(height: 1)
-                                    .padding(.horizontal, 24)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 8)
-                    .background(Color.black.opacity(0.32))
-                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(Color.paper.opacity(0.10), lineWidth: 1)
-                    )
-                    .padding(.horizontal, 32)
-                }
-
-                Spacer(minLength: 0)
-
-                Text(dateLine)
-                    .font(.ui(22))
-                    .foregroundStyle(Color.paper.opacity(0.55))
-                    .padding(.bottom, 24)
-            }
-            .padding(.top, 64)
-            .padding(.horizontal, 56)
-        }
-        .frame(width: 1080, height: 1080)
-    }
-
-    /// Winner avatar / monogram with a laurel + trophy crest behind it.
-    private func winnerCrest(winner: WinPlayer) -> some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Color.gold.opacity(0.45), .clear],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 260
-                    )
-                )
-                .frame(width: 460, height: 460)
-
-            Circle()
-                .stroke(Color.gold.opacity(0.5), lineWidth: 2)
-                .frame(width: 320, height: 320)
-            Circle()
-                .stroke(Color.gold.opacity(0.25), lineWidth: 1)
-                .frame(width: 360, height: 360)
-
-            AvatarView(name: winner.name,
-                       colorIndex: winner.avatarIndex,
-                       size: 240,
-                       active: true,
-                       photoData: photoFor(winner.id))
-                .shadow(color: Color.gold.opacity(0.7), radius: 30, x: 0, y: 0)
-
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 56, weight: .bold))
-                .foregroundStyle(Color.walnut)
-                .padding(20)
-                .background(Color.gold)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color.paper, lineWidth: 4))
-                .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 6)
-                .offset(x: 90, y: 100)
-        }
-        .frame(width: 460, height: 460)
+    private var defeatedNames: [WinPlayer] {
+        players.filter { $0.id != winner?.id }
+            .sorted { $0.bankedScore > $1.bankedScore }
     }
 
     private var dateLine: String {
         let f = DateFormatter()
-        f.dateStyle = .long
-        return f.string(from: endedAt ?? Date())
+        f.dateFormat = "MMM d, yyyy"
+        return "· \(f.string(from: endedAt ?? Date()).uppercased()) ·"
+    }
+
+    var body: some View {
+        ZStack {
+            paperBackground
+
+            // Decorative top + bottom walnut strokes (gradient bars)
+            VStack {
+                Rectangle()
+                    .fill(LinearGradient(
+                        colors: [.clear, Color.walnut, .clear],
+                        startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 8)
+                Spacer()
+                Rectangle()
+                    .fill(LinearGradient(
+                        colors: [.clear, Color.walnut, .clear],
+                        startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 8)
+            }
+
+            // Warm halo behind the trophy
+            RadialGradient(
+                gradient: Gradient(stops: [
+                    .init(color: Color.gold.opacity(0.30), location: 0),
+                    .init(color: .clear, location: 0.65)
+                ]),
+                center: UnitPoint(x: 0.5, y: 0.28),
+                startRadius: 0, endRadius: 640
+            )
+            .blendMode(.multiply)
+
+            // Corner watermarks
+            VStack {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(gameName.uppercased())
+                            .font(.mono(20, weight: .bold))
+                            .tracking(3)
+                            .foregroundStyle(Color.walnut.opacity(0.45))
+                        Text(dateLine)
+                            .font(.mono(20))
+                            .tracking(3)
+                            .foregroundStyle(Color.walnut.opacity(0.45))
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("FARKLE")
+                            .font(.mono(20, weight: .bold))
+                            .tracking(3)
+                            .foregroundStyle(Color.walnut.opacity(0.45))
+                        Text("· FREE FOREVER ·")
+                            .font(.mono(20))
+                            .tracking(3)
+                            .foregroundStyle(Color.walnut.opacity(0.45))
+                    }
+                }
+                .padding(.horizontal, 64)
+                .padding(.top, 80)
+                Spacer()
+            }
+
+            // Main composition
+            VStack(spacing: 18) {
+                Spacer().frame(height: 110)
+                Text("THE WINNER IS")
+                    .font(.ui(28, weight: .bold))
+                    .tracking(8)
+                    .foregroundStyle(Color.ink3)
+
+                if let winner {
+                    TrophyView(size: 380, ribbon: winner.name.split(separator: " ").first.map { $0.uppercased() } ?? "WINNER")
+                        .shadow(color: Color.walnut.opacity(0.20), radius: 30, x: 0, y: 12)
+                        .padding(.top, -6)
+
+                    let parts = winner.name.split(separator: " ")
+                    let first = parts.first.map(String.init) ?? winner.name
+                    let rest = parts.dropFirst().joined(separator: " ")
+                    VStack(spacing: 2) {
+                        Text(first)
+                            .font(.display(150, italic: true))
+                            .foregroundStyle(Color.walnut)
+                        if !rest.isEmpty {
+                            Text(rest)
+                                .font(.display(150))
+                                .foregroundStyle(Color.ink)
+                        }
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .padding(.horizontal, 48)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 14) {
+                        Text(winner.bankedScore.formatted())
+                            .font(.mono(140, weight: .bold))
+                            .foregroundStyle(Color.ink)
+                        Text("POINTS")
+                            .font(.mono(28, weight: .semibold))
+                            .tracking(3)
+                            .foregroundStyle(Color.ink3)
+                    }
+                    .padding(.top, 4)
+
+                    // Stat pills
+                    HStack(spacing: 16) {
+                        statPill(value: "\(rounds)", label: "rounds")
+                        if hotDiceCount > 0 {
+                            statPill(value: "\(hotDiceCount)", label: hotDiceCount == 1 ? "hot dice" : "hot dice")
+                        }
+                        statPill(value: durationLabel, label: "duration")
+                    }
+                    .padding(.top, 14)
+
+                    if !defeatedNames.isEmpty {
+                        HStack(spacing: 18) {
+                            Text("def.")
+                                .font(.ui(28))
+                                .foregroundStyle(Color.ink3)
+                            ForEach(Array(defeatedNames.prefix(4).enumerated()), id: \.element.id) { idx, p in
+                                HStack(spacing: 10) {
+                                    AvatarView(name: p.name,
+                                               colorIndex: p.avatarIndex,
+                                               size: 56,
+                                               photoData: photoFor(p.id))
+                                    Text(p.name)
+                                        .font(.ui(30, weight: .medium))
+                                        .foregroundStyle(Color.ink2)
+                                }
+                                if idx < min(defeatedNames.count, 4) - 1 {
+                                    Text("·").font(.ui(28)).foregroundStyle(Color.ink3)
+                                }
+                            }
+                        }
+                        .padding(.top, 32)
+                    }
+                }
+
+                Spacer()
+                Text("played on Farkle · the free one")
+                    .font(.display(36, italic: true))
+                    .foregroundStyle(Color.ink3.opacity(0.85))
+                    .padding(.bottom, 96)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 48)
+        }
+        .frame(width: 1080, height: 1920)
+    }
+
+    private var paperBackground: some View {
+        ZStack {
+            Color.paper
+            // Subtle paper grain via stacked radial pinpoints
+            Canvas { ctx, size in
+                let walnut = Color.walnut
+                let cell: Double = 200
+                let cols = Int(ceil(size.width / cell)) + 1
+                let rows = Int(ceil(size.height / cell)) + 1
+                let dots: [(x: Double, y: Double, r: Double, op: Double)] = [
+                    (0.17, 0.23, 1.4, 0.06),
+                    (0.73, 0.71, 1.4, 0.05),
+                    (0.41, 0.89, 1.4, 0.05),
+                    (0.87, 0.13, 2.0, 0.04)
+                ]
+                for i in 0..<rows {
+                    for j in 0..<cols {
+                        for d in dots {
+                            let x = Double(j) * cell + d.x * cell
+                            let y = Double(i) * cell + d.y * cell
+                            let rect = CGRect(x: x - d.r, y: y - d.r, width: d.r * 2, height: d.r * 2)
+                            ctx.fill(Path(ellipseIn: rect), with: .color(walnut.opacity(d.op)))
+                        }
+                    }
+                }
+            }
+            .blendMode(.multiply)
+        }
+    }
+
+    private func statPill(value: String, label: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(value)
+                .font(.mono(34, weight: .bold))
+                .foregroundStyle(Color.walnut)
+            Text(label)
+                .font(.mono(26))
+                .tracking(1)
+                .foregroundStyle(Color.ink3)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .background(Color.paperSurface)
+        .clipShape(Capsule())
+        .overlay(
+            Capsule().stroke(Color.walnut.opacity(0.15), lineWidth: 1)
+        )
+        .shadow(color: Color.ink.opacity(0.06), radius: 8, x: 0, y: 4)
     }
 }
 
-/// Render a Game's win card to a UIImage suitable for the share sheet.
+/// Render the win story card to a UIImage suitable for the share sheet or Photos.
 @MainActor
 enum WinImageRenderer {
     static func image(for game: Game, session: FarkleNetSession? = nil) -> UIImage? {

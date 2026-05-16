@@ -28,6 +28,7 @@ targets:
         UILaunchScreen:
           UIColorName: PaperBackground
         NSLocalNetworkUsageDescription: "Farkle uses local networking so friends nearby can watch your score live. Nothing leaves your devices."
+        NSPhotoLibraryAddUsageDescription: "Save the winner image to your Photos so you can keep or share it later."
         NSBonjourServices:
           - _farkle-game._tcp
           - _farkle-game._udp

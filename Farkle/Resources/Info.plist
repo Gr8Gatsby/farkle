@@ -25,6 +25,8 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Farkle uses local networking so friends nearby can watch your score live. Nothing leaves your devices.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save the winner image to your Photos so you can keep or share it later.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>InstrumentSerif-Regular.ttf</string>
