@@ -46,13 +46,13 @@ struct ScoreSheetCatalog {
             return (1...6).map { face in
                 let base = face == 1 ? 1000 : face * 100
                 return ScoreSheetEntry(id: "five-\(face)", face: face, count: 5,
-                                       label: "Five \(face)s", points: base * 4)
+                                       label: "Five \(face)s", points: base * 3)
             }
         case .sixOfAKind:
             return (1...6).map { face in
                 let base = face == 1 ? 1000 : face * 100
                 return ScoreSheetEntry(id: "six-\(face)", face: face, count: 6,
-                                       label: "Six \(face)s", points: base * 8)
+                                       label: "Six \(face)s", points: base * 4)
             }
         case .specials:
             var out: [ScoreSheetEntry] = []

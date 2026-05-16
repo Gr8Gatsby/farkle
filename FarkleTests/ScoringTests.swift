@@ -25,12 +25,14 @@ final class ScoringTests: XCTestCase {
         XCTAssertEqual(engine.score(dice: [3,3,3,3]).total, 600)
     }
 
-    func test_fiveOfAKind_quadruples() {
-        XCTAssertEqual(engine.score(dice: [2,2,2,2,2]).total, 800)
+    func test_fiveOfAKind_triples_3oak() {
+        // Standard Farkle: 5× = 3 × (three of a kind). Three 2s = 200 → five 2s = 600.
+        XCTAssertEqual(engine.score(dice: [2,2,2,2,2]).total, 600)
     }
 
-    func test_sixOfAKind_octuples() {
-        XCTAssertEqual(engine.score(dice: [6,6,6,6,6,6]).total, 4800)
+    func test_sixOfAKind_quadruples_3oak() {
+        // Standard Farkle: 6× = 4 × (three of a kind). Three 6s = 600 → six 6s = 2400.
+        XCTAssertEqual(engine.score(dice: [6,6,6,6,6,6]).total, 2400)
     }
 
     func test_straight_oneThroughSix_scores1500() {

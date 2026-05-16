@@ -46,11 +46,12 @@ struct ScoreHelperEngine {
             let n = remaining[face]
             guard n >= 3 else { continue }
             let base = face == 1 ? 1000 : face * 100
+            // Standard Farkle: four of a kind = 2×, five = 3×, six = 4× (the three-of-a-kind value).
             let multiplier: Int
             let label: String
             switch n {
-            case 6: multiplier = 8; label = "Six \(face)s"
-            case 5: multiplier = 4; label = "Five \(face)s"
+            case 6: multiplier = 4; label = "Six \(face)s"
+            case 5: multiplier = 3; label = "Five \(face)s"
             case 4: multiplier = 2; label = "Four \(face)s"
             default: multiplier = 1; label = "Three \(face)s"
             }

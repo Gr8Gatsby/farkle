@@ -11,8 +11,8 @@ struct RulesView: View {
         ("Three 5s", [5,5,5], "500"),
         ("Three 6s", [6,6,6], "600"),
         ("Four of a kind", [4,4,4,4], "2×"),
-        ("Five of a kind", [3,3,3,3,3], "4×"),
-        ("Six of a kind", [6,6,6,6,6,6], "8×"),
+        ("Five of a kind", [3,3,3,3,3], "3×"),
+        ("Six of a kind", [6,6,6,6,6,6], "4×"),
         ("Straight 1–6", [1,2,3,4,5,6], "1,500"),
         ("Three pairs", [2,2,4,4,6,6], "1,500")
     ]
