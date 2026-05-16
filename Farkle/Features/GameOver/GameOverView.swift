@@ -135,7 +135,7 @@ struct GameOverView: View {
                                 .font(.ui(13, weight: .semibold))
                         }
                         .buttonStyle(.plain)
-                        Button("Done") { onExit() }
+                        Button("End game") { onExit() }
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
                             .background(Color.white.opacity(0.10))

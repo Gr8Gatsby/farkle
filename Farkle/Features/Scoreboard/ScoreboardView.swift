@@ -13,6 +13,8 @@ struct ScoreboardView: View {
     @State private var liveFeed: [ActionSnapshot] = []
     @State private var identity: JoinerIdentity?
     @State private var photoPickerPlayer: PlayerSnapshot?
+    @State private var shareImage: UIImage?
+    @State private var showShareSheet = false
 
     private var snapshot: GameSnapshot? { session.latestSnapshot }
 
@@ -49,7 +51,10 @@ struct ScoreboardView: View {
                 .transition(.opacity)
             }
 
-            if session.joinState == .hostEnded {
+            // Only show the "host quit" overlay when the host disconnected
+            // mid-game. If the snapshot already says the game ended, the joiner
+            // is showing the win celebration and shouldn't be hijacked.
+            if session.joinState == .hostEnded, snapshot?.endedAt == nil {
                 hostEndedOverlay
             }
         }
@@ -429,53 +434,117 @@ struct ScoreboardView: View {
         let winner = snap.players.first(where: { $0.id == snap.winnerPlayerID })
         return ZStack {
             ConfettiView()
-            VStack(spacing: 20) {
-                Spacer()
+            VStack(spacing: 16) {
+                Spacer(minLength: 12)
                 Text("FARKLE")
                     .font(.ui(14, weight: .bold))
                     .tracking(4)
                     .foregroundStyle(Color.gold)
                 if let winner {
-                    AvatarView(name: winner.name,
-                               colorIndex: winner.avatarIndex,
-                               size: 110,
-                               active: true,
-                               photoData: snap.photoData(for: winner.id))
-                        .shadow(color: Color.gold.opacity(0.5), radius: 30)
+                    winnerCrest(winner: winner, snap: snap)
                     (
-                        Text("\(winner.name)\n").font(.display(64, italic: true))
+                        Text("\(winner.name)\n").font(.display(56, italic: true))
                             .foregroundStyle(Color.paper) +
-                        Text("wins.").font(.display(64))
+                        Text("wins.").font(.display(56))
                             .foregroundStyle(Color.gold2)
                     )
                     .multilineTextAlignment(.center)
-                    .lineSpacing(-12)
+                    .lineSpacing(-10)
                     Text(winner.bankedScore.formatted())
-                        .font(.mono(36, weight: .bold))
+                        .font(.mono(32, weight: .bold))
                         .foregroundStyle(Color.gold2)
                 }
                 Spacer()
-                Button {
-                    session.leaveSession()
-                    onLeave()
-                } label: {
-                    Text("Done")
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.white.opacity(0.10))
-                        .foregroundStyle(Color.paper)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.paper.opacity(0.2), lineWidth: 0.5)
-                        )
-                        .font(.ui(14, weight: .semibold))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 28)
+                shareButton(snap: snap)
+                doneButton
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let image = shareImage {
+                ShareSheet(items: [image, shareCaption(snap: snap)])
             }
         }
+    }
+
+    private func winnerCrest(winner: PlayerSnapshot, snap: GameSnapshot) -> some View {
+        ZStack {
+            Circle()
+                .fill(RadialGradient(colors: [Color.gold.opacity(0.35), .clear],
+                                     center: .center, startRadius: 0, endRadius: 140))
+                .frame(width: 260, height: 260)
+            AvatarView(name: winner.name,
+                       colorIndex: winner.avatarIndex,
+                       size: 140,
+                       active: true,
+                       photoData: snap.photoData(for: winner.id))
+                .shadow(color: Color.gold.opacity(0.6), radius: 22)
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(Color.walnut)
+                .padding(12)
+                .background(Color.gold)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.paper, lineWidth: 3))
+                .shadow(color: Color.black.opacity(0.4), radius: 8, x: 0, y: 4)
+                .offset(x: 54, y: 54)
+        }
+        .frame(width: 260, height: 260)
+    }
+
+    private func shareButton(snap: GameSnapshot) -> some View {
+        Button {
+            renderAndShare(snap: snap)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.arrow.up.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("Share the win")
+                    .font(.ui(15, weight: .bold))
+            }
+            .foregroundStyle(Color.walnut)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(Color.gold)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: Color.black.opacity(0.45), radius: 0, x: 0, y: 3)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var doneButton: some View {
+        Button {
+            session.leaveSession()
+            onLeave()
+        } label: {
+            Text("Done")
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.white.opacity(0.10))
+                .foregroundStyle(Color.paper)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.paper.opacity(0.2), lineWidth: 0.5)
+                )
+                .font(.ui(14, weight: .semibold))
+        }
+        .buttonStyle(.plain)
+    }
+
+    @MainActor
+    private func renderAndShare(snap: GameSnapshot) {
+        shareImage = WinImageRenderer.image(for: snap)
+        if shareImage != nil { showShareSheet = true }
+    }
+
+    private func shareCaption(snap: GameSnapshot) -> String {
+        if let id = snap.winnerPlayerID,
+           let winner = snap.players.first(where: { $0.id == id }) {
+            return "\(winner.name) won our Farkle game at \(winner.bankedScore.formatted())."
+        }
+        return "Farkle win!"
     }
 
     // MARK: - Host ended

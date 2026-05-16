@@ -1,19 +1,52 @@
 import SwiftUI
 
 /// A 1080×1080 felt-themed brag card used as the source for ImageRenderer.
-/// Designed to feel cohesive with the Game Over screen but standalone (no
-/// touch targets, no system chrome, generous type).
+/// Renders from a host-side `Game` or a joiner-side `GameSnapshot`.
 struct WinShareCard: View {
-    let game: Game
-    var photoFor: (UUID) -> Data? = { _ in nil }
+    let gameName: String
+    let endedAt: Date?
+    let players: [WinPlayer]
+    let winnerID: UUID?
+    let photoFor: (UUID) -> Data?
 
-    private var winner: Player? {
-        game.orderedPlayers.first(where: { $0.id == game.winnerPlayerID })
-            ?? game.orderedPlayers.max(by: { $0.bankedScore < $1.bankedScore })
+    struct WinPlayer: Identifiable {
+        let id: UUID
+        let name: String
+        let avatarIndex: Int
+        let bankedScore: Int
     }
 
-    private var standings: [Player] {
-        game.orderedPlayers.sorted { $0.bankedScore > $1.bankedScore }
+    init(game: Game, photoFor: @escaping (UUID) -> Data?) {
+        self.gameName = game.name
+        self.endedAt = game.endedAt
+        self.players = game.orderedPlayers.map {
+            WinPlayer(id: $0.id, name: $0.name,
+                      avatarIndex: $0.avatarIndex,
+                      bankedScore: $0.bankedScore)
+        }
+        self.winnerID = game.winnerPlayerID
+        self.photoFor = photoFor
+    }
+
+    init(snapshot: GameSnapshot) {
+        self.gameName = snapshot.gameName
+        self.endedAt = snapshot.endedAt
+        self.players = snapshot.players.map {
+            WinPlayer(id: $0.id, name: $0.name,
+                      avatarIndex: $0.avatarIndex,
+                      bankedScore: $0.bankedScore)
+        }
+        self.winnerID = snapshot.winnerPlayerID
+        self.photoFor = { id in snapshot.photoData(for: id) }
+    }
+
+    private var winner: WinPlayer? {
+        players.first(where: { $0.id == winnerID })
+            ?? players.max(by: { $0.bankedScore < $1.bankedScore })
+    }
+
+    private var standings: [WinPlayer] {
+        players.sorted { $0.bankedScore > $1.bankedScore }
     }
 
     var body: some View {
@@ -30,7 +63,7 @@ struct WinShareCard: View {
                         .font(.ui(28, weight: .bold))
                         .tracking(8)
                         .foregroundStyle(Color.gold)
-                    Text(game.name)
+                    Text(gameName)
                         .font(.display(40))
                         .foregroundStyle(Color.paper)
                 }
@@ -111,9 +144,8 @@ struct WinShareCard: View {
     }
 
     /// Winner avatar / monogram with a laurel + trophy crest behind it.
-    private func winnerCrest(winner: Player) -> some View {
+    private func winnerCrest(winner: WinPlayer) -> some View {
         ZStack {
-            // Soft gold radial halo
             Circle()
                 .fill(
                     RadialGradient(
@@ -125,7 +157,6 @@ struct WinShareCard: View {
                 )
                 .frame(width: 460, height: 460)
 
-            // Laurel rings
             Circle()
                 .stroke(Color.gold.opacity(0.5), lineWidth: 2)
                 .frame(width: 320, height: 320)
@@ -133,7 +164,6 @@ struct WinShareCard: View {
                 .stroke(Color.gold.opacity(0.25), lineWidth: 1)
                 .frame(width: 360, height: 360)
 
-            // The portrait (photo if claimed, monogram otherwise)
             AvatarView(name: winner.name,
                        colorIndex: winner.avatarIndex,
                        size: 240,
@@ -141,7 +171,6 @@ struct WinShareCard: View {
                        photoData: photoFor(winner.id))
                 .shadow(color: Color.gold.opacity(0.7), radius: 30, x: 0, y: 0)
 
-            // Trophy badge clipped to the bottom of the avatar
             Image(systemName: "trophy.fill")
                 .font(.system(size: 56, weight: .bold))
                 .foregroundStyle(Color.walnut)
@@ -158,7 +187,7 @@ struct WinShareCard: View {
     private var dateLine: String {
         let f = DateFormatter()
         f.dateStyle = .long
-        return f.string(from: game.endedAt ?? Date())
+        return f.string(from: endedAt ?? Date())
     }
 }
 
@@ -168,6 +197,12 @@ enum WinImageRenderer {
     static func image(for game: Game, session: FarkleNetSession? = nil) -> UIImage? {
         let card = WinShareCard(game: game) { id in session?.photoData(for: id) }
         let renderer = ImageRenderer(content: card)
+        renderer.scale = 2.0
+        return renderer.uiImage
+    }
+
+    static func image(for snapshot: GameSnapshot) -> UIImage? {
+        let renderer = ImageRenderer(content: WinShareCard(snapshot: snapshot))
         renderer.scale = 2.0
         return renderer.uiImage
     }

@@ -19,6 +19,18 @@ struct ActiveGameView: View {
     private var engine: GameEngine { GameEngine(game: game, context: context) }
 
     var body: some View {
+        bodyContent
+            .hostBroadcaster(game: game, session: netSession)
+            .onAppear { startHostingIfNeeded() }
+            .onDisappear {
+                // Closing the active-game view also wraps up hosting cleanly,
+                // so joiners on an ended-game scoreboard get a graceful end.
+                netSession.stopHosting()
+            }
+    }
+
+    @ViewBuilder
+    private var bodyContent: some View {
         if game.endedAt != nil {
             GameOverView(game: game,
                          onUndo: {
@@ -29,7 +41,6 @@ struct ActiveGameView: View {
                          session: netSession)
         } else if game.isInFinalRound {
             FinalRoundView(game: game, onExit: onExit, session: netSession)
-                .hostBroadcaster(game: game, session: netSession)
         } else {
             ZStack {
                 PaperBackground()
@@ -148,11 +159,6 @@ struct ActiveGameView: View {
                 Button("Stay", role: .cancel) {}
             } message: {
                 Text("Your game is saved. You can resume it from Home.")
-            }
-            .hostBroadcaster(game: game, session: netSession)
-            .onAppear { startHostingIfNeeded() }
-            .onDisappear {
-                if game.endedAt != nil { netSession.stopHosting() }
             }
         }
     }
