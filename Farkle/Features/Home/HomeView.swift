@@ -54,7 +54,7 @@ struct HomeView: View {
             )
         }
         .padding(.horizontal, 24)
-        .padding(.top, 60)
+        .padding(.top, 12)
     }
 
     private var weekdayLine: String {

@@ -118,12 +118,14 @@ The heart of the app. Layout (top to bottom):
 - Buttons: "Keep rolling" (cancel) and "Bank & pass to Jules →" (commit).
 - If banking will trigger the target, headline reads "Maya hits the target." and the commit button label becomes "Bank & start final round →".
 
-### 4.6 (05) Score Helper (calculator)
-- Bottom sheet.
-- A row of 6 die slots; the user taps dice values 1–6 from a 6-die pad to fill slots.
-- As dice are added, the helper detects combos using the active game's house rules and shows them as line items (e.g., "Single 1 +100", "Three 5s +500") summing to "This roll +X".
-- "Cancel" dismisses. "Add to turn" adds the total to the pending turn and dismisses.
-- Helper does not enforce that you used scoring dice — it's a calculator, not a referee.
+### 4.6 (05) Score Helper (scoresheet)
+- Full-height sheet titled "SCORE HELPER".
+- A reference list of scoring combos grouped by section: Singles, Three of a kind, Four of a kind, Five of a kind, Six of a kind, Special combos (Straight, Three pairs, Two triples — each shown only when the matching house rule is on).
+- Each row shows: mini dice glyph, combo name, value, plus button.
+- Tapping a row adds its value to a running "Add +X to turn" total. Tapping again adds again (so two singles 5 = +100).
+- "Clear" resets the running total. "Add +X to turn" commits to pending turn and dismisses.
+- Hot Dice mark: if the user has selected any 6-die combo (or accumulated 6 dice worth of selections), the helper passes a `usesAllDice = true` flag back, which auto-checks the Hot Dice toggle on the pending-turn card.
+- Helper is a reference list, not a calculator — the player still has to recognize their hand.
 
 ### 4.7 (06) Game Over (winner)
 - Felt-green celebration backdrop with confetti.
@@ -218,3 +220,4 @@ None at spec time. Will be added here as they arise.
 - 2026-05-15 — Initial draft based on design bundle handoff (Felt & Bone system), targeting SwiftUI iOS 17+, Paper theme default, scope = Core + Helper + History/Stats.
 - 2026-05-15 — v1 implementation landed on `feature/initial-implementation`. All 11 screens built; 21 scoring+flow unit tests passing; build green via `xcodebuild`. Bust button now also opens a small confirm sheet (parity with Bank's confirmation, addressing the "I clicked it by accident" concern from the design chat).
 - 2026-05-16 — New Game refinements: prefill players (names + avatar colors) from the most recent game; flip Two-triples default to on (2,500); New Game sheet pinned to full-height `.large` detent with tighter top padding so the title and player rows sit near the top; trash icon now appears on every player row when there are at least two, so any seat can be removed.
+- 2026-05-16 — Active Game polish: removed duplicate top safe-area padding so content sits right under the system bar (was leaving ~100pt of empty cream); enlarged the quick-add chip buttons (height 36→48, font 13→16) for a more tactile press. Score Helper rewritten from a dice-input calculator to a tappable scoresheet: each scoring combo in the rules is a row the player taps to accumulate; encourages players to spot their own hands instead of letting the phone do the math. Defaults migrator covers the change to the Two-triples house rule so cached preferences pick up the new default on first launch.

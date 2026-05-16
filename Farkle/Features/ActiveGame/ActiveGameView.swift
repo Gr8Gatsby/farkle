@@ -82,14 +82,15 @@ struct ActiveGameView: View {
             .sheet(isPresented: $showScoreHelper) {
                 ScoreHelperSheet(
                     rules: game.rules,
-                    onAdd: { breakdown in
-                        engine.addToPending(breakdown.total)
-                        if breakdown.usesAllDice { markHotDice = true }
+                    onAdd: { total, hot in
+                        engine.addToPending(total)
+                        if hot { markHotDice = true }
                         showScoreHelper = false
                     },
                     onCancel: { showScoreHelper = false }
                 )
                 .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
                 .presentationBackground(Color.paper)
             }
             .sheet(isPresented: $showKeypad) {
@@ -161,7 +162,7 @@ struct ActiveGameView: View {
             .opacity(game.actions.isEmpty ? 0.4 : 1)
         }
         .padding(.horizontal, 14)
-        .padding(.top, 54)
+        .padding(.top, 8)
         .padding(.bottom, 6)
     }
 

@@ -28,7 +28,7 @@ struct RulesView: View {
                     chart.padding(.horizontal, 16)
                     Color.clear.frame(height: 100)
                 }
-                .padding(.top, 54)
+                .padding(.top, 8)
             }
             .scrollIndicators(.hidden)
         }

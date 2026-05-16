@@ -36,7 +36,7 @@ struct PendingTurnCard: View {
             }
 
             // Quick-add chips
-            FlowLayout(spacing: 6) {
+            FlowLayout(spacing: 8) {
                 ForEach(chips, id: \.self) { v in
                     Button { onQuickAdd(v) } label: {
                         Text("+\(v)")
@@ -46,9 +46,9 @@ struct PendingTurnCard: View {
                 Button {
                     onOpenKeypad()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Image(systemName: "plus.forwardslash.minus")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                         Text("Custom")
                     }
                 }

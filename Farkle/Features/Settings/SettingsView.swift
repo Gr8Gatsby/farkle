@@ -128,7 +128,7 @@ struct SettingsView: View {
             .font(.display(38))
             .foregroundStyle(Color.ink)
             .padding(.horizontal, 24)
-            .padding(.top, 60)
+            .padding(.top, 12)
             .padding(.bottom, 8)
     }
 

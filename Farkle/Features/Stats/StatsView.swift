@@ -68,7 +68,7 @@ struct StatsView: View {
             .font(.ui(12, weight: .semibold))
             .foregroundStyle(Color.walnut)
         }
-        .padding(.top, 54)
+        .padding(.top, 12)
     }
 
     private var statGrid: some View {

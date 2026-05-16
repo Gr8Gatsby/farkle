@@ -50,25 +50,27 @@ struct WalnutButtonStyle: ButtonStyle {
 
 struct ChipButtonStyle: ButtonStyle {
     var accent: Bool = false
-    var size: CGFloat = 36
+    var size: CGFloat = 48
+    var fontSize: CGFloat = 16
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.mono(13, weight: .semibold))
+            .font(.mono(fontSize, weight: .semibold))
             .foregroundStyle(accent ? Color.walnutInk : Color.ink)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 14)
+            .frame(minWidth: 64)
             .frame(height: size)
             .background(
                 Group {
                     if accent { Color.walnut } else { Color.paperSurface }
                 }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .stroke(accent ? Color.clear : Color.walnut.opacity(0.18), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(accent ? Color.clear : Color.walnut.opacity(0.20), lineWidth: 1)
             )
-            .shadow(color: accent ? Color.walnutShadow : Color.black.opacity(0.04), radius: 0, x: 0, y: accent ? 2 : 0)
+            .shadow(color: accent ? Color.walnutShadow : Color.black.opacity(0.04), radius: 0, x: 0, y: accent ? 2 : 1)
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.spring(response: 0.15, dampingFraction: 0.7), value: configuration.isPressed)
     }

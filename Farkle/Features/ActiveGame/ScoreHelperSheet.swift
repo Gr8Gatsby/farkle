@@ -1,190 +1,279 @@
 import SwiftUI
 
+/// A single row the user can tap to add a known scoring combo to their pending turn.
+/// Stays a reference list (the player still has to recognize their hand) — not a calculator.
+struct ScoreSheetEntry: Identifiable, Equatable {
+    let id: String
+    let face: Int       // the die face this row is about (0 for combos)
+    let count: Int      // how many dice form the combo (0 for combos)
+    let label: String
+    let points: Int
+}
+
+enum ScoreSheetSection: String, CaseIterable, Identifiable {
+    case singles = "Singles"
+    case threeOfAKind = "Three of a kind"
+    case fourOfAKind = "Four of a kind"
+    case fiveOfAKind = "Five of a kind"
+    case sixOfAKind = "Six of a kind"
+    case specials = "Special combos"
+    var id: String { rawValue }
+}
+
+struct ScoreSheetCatalog {
+    let rules: HouseRules
+
+    func entries(in section: ScoreSheetSection) -> [ScoreSheetEntry] {
+        switch section {
+        case .singles:
+            return [
+                ScoreSheetEntry(id: "single-1", face: 1, count: 1, label: "Single 1", points: 100),
+                ScoreSheetEntry(id: "single-5", face: 5, count: 1, label: "Single 5", points: 50)
+            ]
+        case .threeOfAKind:
+            return (1...6).map { face in
+                let pts = face == 1 ? 1000 : face * 100
+                return ScoreSheetEntry(id: "three-\(face)", face: face, count: 3,
+                                       label: "Three \(face)s", points: pts)
+            }
+        case .fourOfAKind:
+            return (1...6).map { face in
+                let base = face == 1 ? 1000 : face * 100
+                return ScoreSheetEntry(id: "four-\(face)", face: face, count: 4,
+                                       label: "Four \(face)s", points: base * 2)
+            }
+        case .fiveOfAKind:
+            return (1...6).map { face in
+                let base = face == 1 ? 1000 : face * 100
+                return ScoreSheetEntry(id: "five-\(face)", face: face, count: 5,
+                                       label: "Five \(face)s", points: base * 4)
+            }
+        case .sixOfAKind:
+            return (1...6).map { face in
+                let base = face == 1 ? 1000 : face * 100
+                return ScoreSheetEntry(id: "six-\(face)", face: face, count: 6,
+                                       label: "Six \(face)s", points: base * 8)
+            }
+        case .specials:
+            var out: [ScoreSheetEntry] = []
+            if rules.straight {
+                out.append(ScoreSheetEntry(id: "straight", face: 0, count: 6,
+                                           label: "Straight 1–6", points: 1500))
+            }
+            if rules.threePair {
+                out.append(ScoreSheetEntry(id: "three-pair", face: 0, count: 6,
+                                           label: "Three pairs", points: 1500))
+            }
+            if rules.twoTriples {
+                out.append(ScoreSheetEntry(id: "two-triples", face: 0, count: 6,
+                                           label: "Two triples", points: 2500))
+            }
+            return out
+        }
+    }
+}
+
 struct ScoreHelperSheet: View {
     let rules: HouseRules
-    var onAdd: (ScoreBreakdown) -> Void
+    var onAdd: (Int, Bool) -> Void   // (total, usesAllDice for Hot Dice marking)
     var onCancel: () -> Void
 
-    @State private var dice: [Int] = []
+    @State private var picks: [ScoreSheetEntry] = []
+    @State private var diceUsed: Int = 0  // accumulated dice across picks
 
-    private var breakdown: ScoreBreakdown {
-        ScoreHelperEngine(rules: rules).score(dice: dice)
-    }
+    private var catalog: ScoreSheetCatalog { ScoreSheetCatalog(rules: rules) }
+
+    private var total: Int { picks.reduce(0) { $0 + $1.points } }
+    private var usesAllDice: Bool { picks.contains(where: { $0.count == 6 }) || diceUsed == 6 }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Capsule().fill(Color.walnut.opacity(0.25)).frame(width: 40, height: 4)
-                .padding(.top, 8)
-            HStack {
-                (
-                    Text("Score ").font(.display(28)).foregroundStyle(Color.ink) +
-                    Text("helper").font(.display(28, italic: true)).foregroundStyle(Color.walnut)
-                )
-                Spacer()
-                Button("Clear") {
-                    dice.removeAll()
-                }
-                .font(.ui(13, weight: .semibold))
-                .foregroundStyle(Color.ink3)
-                .opacity(dice.isEmpty ? 0 : 1)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
+        NavigationStack {
+            VStack(spacing: 0) {
+                runningTotal
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
 
-            Text("Tap the dice you rolled — we'll add them up.")
-                .font(.ui(12))
-                .foregroundStyle(Color.ink3)
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
-
-            // Slots
-            HStack(spacing: 8) {
-                ForEach(0..<6, id: \.self) { i in
-                    if i < dice.count {
-                        Button {
-                            dice.remove(at: i)
-                        } label: {
-                            DieView(value: dice[i], size: 42, scoring: true)
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(Color.walnut.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                            .frame(width: 42, height: 42)
-                    }
-                }
-            }
-            .padding(14)
-            .background(Color.paperSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.walnut.opacity(0.10), lineWidth: 0.5)
-            )
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-
-            SectionLabel(text: "Add a die")
-                .padding(.horizontal, 20)
-                .padding(.top, 14)
-
-            HStack(spacing: 6) {
-                ForEach(1...6, id: \.self) { v in
-                    Button {
-                        if dice.count < 6 { dice.append(v) }
-                    } label: {
-                        DieView(value: v, size: 36)
-                            .padding(6)
-                            .background(Color.paperSurface)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(Color.walnut.opacity(0.15), lineWidth: 0.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity)
-                    .disabled(dice.count >= 6)
-                    .opacity(dice.count >= 6 ? 0.4 : 1)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-
-            // Combo breakdown
-            VStack(spacing: 6) {
-                ForEach(breakdown.combos) { combo in
-                    HStack {
-                        Text(combo.label)
-                            .font(.ui(13))
-                            .foregroundStyle(Color.ink)
-                        Spacer()
-                        Text("+\(combo.points.formatted())")
-                            .font(.mono(13, weight: .semibold))
-                            .foregroundStyle(Color.ink)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.paperSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.walnut.opacity(0.10), lineWidth: 0.5)
-                    )
-                }
-                if !breakdown.leftover.isEmpty {
-                    HStack {
-                        Text("Non-scoring")
-                            .font(.ui(12))
-                            .foregroundStyle(Color.ink3)
-                        Spacer()
-                        HStack(spacing: 4) {
-                            ForEach(Array(breakdown.leftover.enumerated()), id: \.offset) { _, v in
-                                DieView(value: v, size: 16, dim: true)
+                ScrollView {
+                    LazyVStack(spacing: 14, pinnedViews: []) {
+                        ForEach(ScoreSheetSection.allCases) { section in
+                            let entries = catalog.entries(in: section)
+                            if !entries.isEmpty {
+                                sectionBlock(title: section.rawValue, entries: entries)
                             }
                         }
+                        Color.clear.frame(height: 8)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
-                HStack {
-                    Text("This roll")
-                        .font(.display(18, italic: true))
-                        .foregroundStyle(Color.walnutInk)
-                    if breakdown.usesAllDice {
-                        HStack(spacing: 4) {
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 11))
-                            Text("Hot dice")
-                                .font(.ui(10, weight: .bold))
-                                .tracking(1)
-                        }
-                        .foregroundStyle(Color.gold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.gold.opacity(0.18))
-                        .clipShape(Capsule())
-                    }
-                    Spacer()
-                    Text("+\(breakdown.total.formatted())")
-                        .font(.mono(18, weight: .bold))
-                        .foregroundStyle(Color.walnutInk)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color.walnut)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
+                .scrollIndicators(.hidden)
 
-            HStack(spacing: 10) {
-                Button("Cancel") { onCancel() }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color.clear)
+                footer
+            }
+            .background(PaperBackground())
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { onCancel() }
+                        .font(.ui(14))
+                        .foregroundStyle(Color.ink2)
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("SCORE HELPER")
+                        .font(.ui(11, weight: .semibold))
+                        .tracking(1.4)
+                        .foregroundStyle(Color.ink3)
+                }
+            }
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    // MARK: subviews
+
+    private var runningTotal: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            (
+                Text("Tap each combo ").font(.display(20)).foregroundStyle(Color.ink) +
+                Text("you rolled.").font(.display(20, italic: true)).foregroundStyle(Color.walnut)
+            )
+            Text("This is a cheat sheet, not a referee — you still have to spot your own hand.")
+                .font(.ui(12))
+                .foregroundStyle(Color.ink3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sectionBlock(title: String, entries: [ScoreSheetEntry]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SectionLabel(text: title).padding(.horizontal, 4)
+            VStack(spacing: 0) {
+                ForEach(Array(entries.enumerated()), id: \.element.id) { idx, entry in
+                    entryRow(entry: entry)
+                    if idx < entries.count - 1 {
+                        Rectangle().fill(Color.walnut.opacity(0.08))
+                            .frame(height: 0.5)
+                            .padding(.leading, 16)
+                    }
+                }
+            }
+            .background(Color.paperSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.walnut.opacity(0.10), lineWidth: 0.5)
+            )
+        }
+    }
+
+    private func entryRow(entry: ScoreSheetEntry) -> some View {
+        Button {
+            pick(entry)
+        } label: {
+            HStack(spacing: 12) {
+                diceGlyph(for: entry)
+                    .frame(width: 96, alignment: .leading)
+                Text(entry.label)
+                    .font(.ui(15, weight: .medium))
                     .foregroundStyle(Color.ink)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
-                    )
-                    .font(.ui(14, weight: .semibold))
+                Spacer()
+                Text("+\(entry.points.formatted())")
+                    .font(.mono(15, weight: .bold))
+                    .foregroundStyle(Color.walnut)
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.walnut.opacity(0.8))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(TapHighlightButtonStyle())
+        .accessibilityLabel("\(entry.label), \(entry.points) points")
+    }
+
+    @ViewBuilder
+    private func diceGlyph(for entry: ScoreSheetEntry) -> some View {
+        if entry.face == 0 {
+            // special combo — show face icons specific to the combo
+            HStack(spacing: 2) {
+                ForEach(diceFacesForSpecial(entry: entry), id: \.self) { face in
+                    DieView(value: face, size: 14)
+                }
+            }
+        } else {
+            HStack(spacing: 2) {
+                ForEach(0..<entry.count, id: \.self) { _ in
+                    DieView(value: entry.face, size: 14)
+                }
+            }
+        }
+    }
+
+    private func diceFacesForSpecial(entry: ScoreSheetEntry) -> [Int] {
+        switch entry.id {
+        case "straight": return [1,2,3,4,5,6]
+        case "three-pair": return [2,2,4,4,6,6]
+        case "two-triples": return [3,3,3,5,5,5]
+        default: return []
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Color.walnut.opacity(0.10)).frame(height: 0.5)
+            HStack(spacing: 10) {
+                Button {
+                    picks.removeAll()
+                    diceUsed = 0
+                } label: {
+                    Text("Clear")
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .foregroundStyle(Color.ink)
+                        .background(Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
+                        )
+                        .font(.ui(14, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .opacity(picks.isEmpty ? 0.4 : 1)
+                .disabled(picks.isEmpty)
 
                 Button {
-                    onAdd(breakdown)
+                    onAdd(total, usesAllDice)
                 } label: {
-                    Text("Add to turn")
+                    HStack(spacing: 6) {
+                        Text("Add")
+                        Text("+\(total.formatted())")
+                            .font(.mono(15, weight: .bold))
+                        Text("to turn")
+                    }
                 }
                 .buttonStyle(WalnutButtonStyle(size: .regular, fullWidth: true))
-                .disabled(breakdown.total == 0)
-                .opacity(breakdown.total == 0 ? 0.5 : 1)
+                .disabled(total == 0)
+                .opacity(total == 0 ? 0.5 : 1)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 24)
-
-            Spacer(minLength: 0)
+            .padding(.top, 12)
+            .padding(.bottom, 18)
+            .background(Color.paper.opacity(0.85).background(.ultraThinMaterial))
         }
+    }
+
+    private func pick(_ entry: ScoreSheetEntry) {
+        picks.append(entry)
+        diceUsed = min(6, diceUsed + entry.count)
+    }
+}
+
+struct TapHighlightButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(configuration.isPressed ? Color.walnut.opacity(0.08) : Color.clear)
     }
 }
