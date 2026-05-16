@@ -188,7 +188,7 @@ struct BustConfirmSheet: View {
                 .tracking(2)
                 .foregroundStyle(Color.crimson)
                 .padding(.top, 14)
-            Text("Bust \(game.activePlayer?.name ?? "this turn")?")
+            Text("Farkle on \(game.activePlayer?.name ?? "this turn")?")
                 .font(.display(26, italic: true))
                 .foregroundStyle(Color.ink)
                 .padding(.top, 4)
@@ -214,7 +214,7 @@ struct BustConfirmSheet: View {
                 Button {
                     onConfirm()
                 } label: {
-                    Text("Bust turn →")
+                    Text("Farkle →")
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(Color.crimson)

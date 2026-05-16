@@ -41,16 +41,20 @@ struct FarkleTabBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.top, 6)
-        .padding(.bottom, 0)
+        .padding(.bottom, 4)
         .background(
-            Color.paperSurface.opacity(0.92)
-                .background(.ultraThinMaterial)
-                .overlay(
-                    Rectangle()
-                        .fill(Color.walnut.opacity(0.10))
-                        .frame(height: 0.5),
-                    alignment: .top
-                )
+            ZStack {
+                Color.paperSurface.opacity(0.92)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+            }
+            .overlay(
+                Rectangle()
+                    .fill(Color.walnut.opacity(0.10))
+                    .frame(height: 0.5),
+                alignment: .top
+            )
+            .ignoresSafeArea(edges: .bottom)
         )
     }
 

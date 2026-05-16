@@ -2,13 +2,13 @@ import SwiftUI
 
 struct PendingTurnCard: View {
     @Bindable var game: Game
-    @Binding var markHotDice: Bool
     var onQuickAdd: (Int) -> Void
     var onClear: () -> Void
     var onOpenHelper: () -> Void
     var onOpenKeypad: () -> Void
+    var onFarkle: () -> Void
 
-    private let chips = [50, 100, 150, 200, 300, 500, 1000]
+    private let chips = [50, 100, 150, 200, 300, 350, 500, 1000]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -68,45 +68,36 @@ struct PendingTurnCard: View {
                     .foregroundStyle(Color.walnut)
                 }
                 Spacer()
-                Toggle(isOn: $markHotDice) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 11))
-                        Text("Hot dice")
-                            .font(.ui(11, weight: .semibold))
-                    }
-                    .foregroundStyle(markHotDice ? Color.gold : Color.ink3)
-                }
-                .toggleStyle(HotDiceToggleStyle())
+                farkleButton
             }
         }
         .padding(14)
         .background(Color.paperSurface)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.walnut.opacity(0.30), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-        )
+        .shadow(color: Color.ink.opacity(0.10), radius: 12, x: 0, y: 4)
+        .shadow(color: Color.ink.opacity(0.05), radius: 2, x: 0, y: 1)
     }
-}
 
-struct HotDiceToggleStyle: ToggleStyle {
-    func makeBody(configuration: Configuration) -> some View {
+    private var farkleButton: some View {
         Button {
-            configuration.isOn.toggle()
+            onFarkle()
         } label: {
-            HStack(spacing: 4) {
-                configuration.label
+            HStack(spacing: 6) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 13, weight: .bold))
+                Text("FARKLE")
+                    .font(.ui(11, weight: .bold))
+                    .tracking(1.0)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(configuration.isOn ? Color.gold.opacity(0.18) : Color.clear)
+            .foregroundStyle(Color.paper)
+            .padding(.horizontal, 12)
+            .frame(height: 32)
+            .background(Color.crimson)
             .clipShape(Capsule())
-            .overlay(
-                Capsule().stroke(configuration.isOn ? Color.gold : Color.ink3.opacity(0.3), lineWidth: 0.5)
-            )
+            .shadow(color: Color.crimson.opacity(0.40), radius: 0, x: 0, y: 2)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Farkle — bust this turn")
     }
 }
 

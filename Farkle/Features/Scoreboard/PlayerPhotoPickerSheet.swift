@@ -13,6 +13,7 @@ struct PlayerPhotoPickerSheet: View {
     @State private var preview: Data?
     @State private var loading = false
     @State private var error: String?
+    @State private var showContactPicker = false
 
     var body: some View {
         NavigationStack {
@@ -53,21 +54,44 @@ struct PlayerPhotoPickerSheet: View {
                                 .multilineTextAlignment(.center)
                         }
 
-                        PhotosPicker(selection: $selection, matching: .images, photoLibrary: .shared()) {
-                            HStack(spacing: 10) {
-                                Image(systemName: "photo.fill")
-                                    .font(.system(size: 14, weight: .semibold))
-                                Text(preview == nil && currentPhotoData == nil
-                                     ? "Pick a photo"
-                                     : "Choose a different photo")
-                                    .font(.ui(14, weight: .semibold))
+                        VStack(spacing: 10) {
+                            Button {
+                                showContactPicker = true
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "person.crop.circle")
+                                        .font(.system(size: 15, weight: .semibold))
+                                    Text("Pick from Contacts")
+                                        .font(.ui(14, weight: .semibold))
+                                }
+                                .foregroundStyle(Color.walnut)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(Color.paperSurface)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(Color.walnut.opacity(0.25), lineWidth: 1)
+                                )
                             }
-                            .foregroundStyle(Color.walnutInk)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.walnut)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .shadow(color: Color.walnutShadow, radius: 0, x: 0, y: 3)
+                            .buttonStyle(.plain)
+
+                            PhotosPicker(selection: $selection, matching: .images, photoLibrary: .shared()) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "photo.fill")
+                                        .font(.system(size: 14, weight: .semibold))
+                                    Text(preview == nil && currentPhotoData == nil
+                                         ? "Pick a photo"
+                                         : "Choose a different photo")
+                                        .font(.ui(14, weight: .semibold))
+                                }
+                                .foregroundStyle(Color.walnutInk)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(Color.walnut)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .shadow(color: Color.walnutShadow, radius: 0, x: 0, y: 3)
+                            }
                         }
                         .padding(.horizontal, 16)
 
@@ -92,15 +116,22 @@ struct PlayerPhotoPickerSheet: View {
                 .scrollIndicators(.hidden)
 
                 HStack(spacing: 10) {
-                    Button("Skip") { onSave(nil) }
-                        .font(.ui(14, weight: .semibold))
-                        .foregroundStyle(Color.ink2)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
-                        )
+                    Button {
+                        onSave(nil)
+                    } label: {
+                        Text("Skip")
+                            .font(.ui(14, weight: .semibold))
+                            .foregroundStyle(Color.ink2)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .contentShape(Rectangle())
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
+                            )
+                    }
+                    .buttonStyle(.plain)
+
                     Button {
                         if let data = preview { onSave(data) } else { onSave(currentPhotoData) }
                     } label: { Text("Use this photo") }
@@ -131,6 +162,20 @@ struct PlayerPhotoPickerSheet: View {
         .onChange(of: selection) { _, newItem in
             guard let newItem else { return }
             Task { await load(item: newItem) }
+        }
+        .sheet(isPresented: $showContactPicker) {
+            ContactPhotoPicker(
+                onPick: { data in
+                    showContactPicker = false
+                    if let data {
+                        preview = data
+                        error = nil
+                    } else {
+                        error = "That contact has no photo. Pick from Photos instead."
+                    }
+                },
+                onCancel: { showContactPicker = false }
+            )
         }
     }
 

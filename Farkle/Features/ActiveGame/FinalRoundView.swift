@@ -277,11 +277,11 @@ struct FinalRoundView: View {
     private var pendingTurnPanel: some View {
         PendingTurnCard(
             game: game,
-            markHotDice: $markHotDice,
             onQuickAdd: { engine.addToPending($0) },
             onClear: { engine.clearPending() },
             onOpenHelper: { showScoreHelper = true },
-            onOpenKeypad: { showKeypad = true }
+            onOpenKeypad: { showKeypad = true },
+            onFarkle: { showBustConfirm = true }
         )
     }
 
@@ -442,67 +442,43 @@ struct FinalRoundView: View {
     // MARK: bottom bar
 
     private var bottomBar: some View {
-        HStack(spacing: 10) {
-            Button {
-                showBustConfirm = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16, weight: .bold))
-                    Text("FARKLE")
-                        .font(.display(22, italic: true))
-                }
-                .foregroundStyle(Color.paper)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(Color.crimson)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .shadow(color: Color.crimson.opacity(0.55), radius: 0, x: 0, y: 3)
-                .shadow(color: Color.black.opacity(0.25), radius: 10, x: 0, y: 5)
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity)
-
-            Button {
-                if canBank { showBankConfirm = true }
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("BANK")
-                            .font(.ui(9, weight: .bold))
-                            .tracking(1.4)
-                            .opacity(0.75)
-                        if canBank, let player = game.activePlayer {
-                            let newTotal = player.bankedScore + game.pendingTurnScore
-                            Text("+\(game.pendingTurnScore) → \(newTotal.formatted())")
-                                .font(.display(20, italic: true))
-                            Text(hint(newTotal: newTotal))
-                                .font(.ui(10, weight: .bold))
-                                .tracking(0.6)
-                                .opacity(0.9)
-                        } else {
-                            Text("Add some points first")
-                                .font(.display(15, italic: true))
-                        }
+        Button {
+            if canBank { showBankConfirm = true }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("BANK")
+                        .font(.ui(9, weight: .bold))
+                        .tracking(1.4)
+                        .opacity(0.75)
+                    if canBank, let player = game.activePlayer {
+                        let newTotal = player.bankedScore + game.pendingTurnScore
+                        Text("+\(game.pendingTurnScore) → \(newTotal.formatted())")
+                            .font(.display(20, italic: true))
+                        Text(hint(newTotal: newTotal))
+                            .font(.ui(10, weight: .bold))
+                            .tracking(0.6)
+                            .opacity(0.9)
+                    } else {
+                        Text("Add some points first")
+                            .font(.display(15, italic: true))
                     }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .bold))
                 }
-                .foregroundStyle(Color.walnutInk)
-                .padding(.horizontal, 16)
-                .frame(height: 56)
-                .frame(maxWidth: .infinity)
-                .background(Color.walnut)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .shadow(color: Color.walnutShadow, radius: 0, x: 0, y: 3)
-                .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 6)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
             }
-            .buttonStyle(.plain)
+            .foregroundStyle(Color.walnutInk)
+            .padding(.horizontal, 18)
+            .frame(height: 60)
             .frame(maxWidth: .infinity)
-            .layoutPriority(1.6)
-            .opacity(canBank ? 1 : 0.55)
+            .background(Color.walnut)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: Color.walnutShadow, radius: 0, x: 0, y: 3)
+            .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 6)
         }
+        .buttonStyle(.plain)
+        .opacity(canBank ? 1 : 0.55)
         .padding(.horizontal, 14)
         .padding(.top, 12)
         .padding(.bottom, 28)
@@ -512,21 +488,25 @@ struct FinalRoundView: View {
         Button {
             showInvite = true
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "dot.radiowaves.left.and.right")
-                    .font(.system(size: 11, weight: .semibold))
-                if !session.roomCode.isEmpty {
-                    Text(session.roomCode)
-                        .font(.mono(13, weight: .bold))
-                        .tracking(1)
-                }
+            HStack(spacing: 5) {
                 if session.connectedPeerCount > 0 {
-                    Text("·").font(.ui(11, weight: .semibold)).opacity(0.6)
-                    Image(systemName: "person.fill").font(.system(size: 10, weight: .semibold))
-                    Text("\(session.connectedPeerCount)").font(.mono(12, weight: .bold))
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("\(session.connectedPeerCount)")
+                        .font(.mono(12, weight: .bold))
+                } else {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.system(size: 11, weight: .semibold))
+                    if !session.roomCode.isEmpty {
+                        Text(session.roomCode)
+                            .font(.mono(12, weight: .bold))
+                            .tracking(0.6)
+                    }
                 }
             }
-            .padding(.horizontal, 12)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 10)
             .frame(height: 36)
             .background(session.connectedPeerCount > 0
                         ? Color.gold.opacity(0.85)
