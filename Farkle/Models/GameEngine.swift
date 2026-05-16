@@ -196,6 +196,44 @@ struct GameEngine {
         return true
     }
 
+    /// Re-assigns `orderIndex` so the players sort in the given order. The same
+    /// physical player remains active even if their position changes.
+    func reorderPlayers(by ids: [UUID]) {
+        let activeID = game.activePlayer?.id
+        for (idx, id) in ids.enumerated() {
+            if let p = game.players.first(where: { $0.id == id }) {
+                p.orderIndex = idx
+            }
+        }
+        if let activeID,
+           let newIdx = game.orderedPlayers.firstIndex(where: { $0.id == activeID }) {
+            game.activePlayerIndex = newIdx
+        }
+        save()
+    }
+
+    /// Append a new player to the roster. Only allowed during the first round
+    /// (see `Game.canAddPlayer`). New seat goes to the end of turn order, so
+    /// they get their round-1 turn after the current active player wraps around.
+    @discardableResult
+    func addPlayer(name: String) -> Player? {
+        guard game.canAddPlayer else { return nil }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let activeID = game.activePlayer?.id
+        let nextIndex = game.orderedPlayers.count
+        let player = Player(name: String(trimmed.prefix(20)),
+                            avatarIndex: nextIndex,
+                            orderIndex: nextIndex)
+        game.players.append(player)
+        if let activeID,
+           let newIdx = game.orderedPlayers.firstIndex(where: { $0.id == activeID }) {
+            game.activePlayerIndex = newIdx
+        }
+        save()
+        return player
+    }
+
     func renamePlayer(_ player: Player, to newName: String) {
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }

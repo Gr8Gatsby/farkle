@@ -12,6 +12,7 @@ struct ActiveGameView: View {
     @State private var showKeypad = false
     @State private var showExitConfirm = false
     @State private var showInvite = false
+    @State private var showEditPlayers = false
     @State private var markHotDice = false
     @State private var actionBeingEdited: ActionLogEntry?
     @State private var netSession = FarkleNetSession()
@@ -57,7 +58,9 @@ struct ActiveGameView: View {
                                 onOpenHelper: { showScoreHelper = true },
                                 onOpenKeypad: { showKeypad = true }
                             )
-                            StandingsLadder(game: game, session: netSession)
+                            StandingsLadder(game: game,
+                                            session: netSession,
+                                            onEdit: { showEditPlayers = true })
                             RecentActionsLog(game: game,
                                              onTap: { entry in actionBeingEdited = entry },
                                              session: netSession)
@@ -150,6 +153,13 @@ struct ActiveGameView: View {
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showEditPlayers) {
+                EditPlayersSheet(game: game,
+                                 onDone: { showEditPlayers = false },
+                                 session: netSession)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
             }
             .alert("Leave game?", isPresented: $showExitConfirm) {
                 Button("Leave", role: .destructive) {

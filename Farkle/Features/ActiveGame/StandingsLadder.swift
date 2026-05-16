@@ -3,11 +3,31 @@ import SwiftUI
 struct StandingsLadder: View {
     let game: Game
     var session: FarkleNetSession? = nil
+    var onEdit: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(text: "Standings")
-                .padding(.horizontal, 4)
+            HStack {
+                SectionLabel(text: "Standings")
+                Spacer()
+                if let onEdit {
+                    Button {
+                        onEdit()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text("Edit")
+                                .font(.ui(11, weight: .semibold))
+                                .tracking(0.6)
+                        }
+                        .foregroundStyle(Color.ink3)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Edit players")
+                }
+            }
+            .padding(.horizontal, 4)
 
             let sorted = game.orderedPlayers.sorted { $0.bankedScore > $1.bankedScore }
             VStack(spacing: 0) {

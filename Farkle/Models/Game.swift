@@ -63,6 +63,19 @@ final class Game {
         return 1 + orderedActions.filter { $0.kind == .bank || $0.kind == .bust }.count / ordered.count
     }
 
+    /// True while we're still in the first round of turn-taking — i.e. at least one
+    /// player hasn't rolled yet. Once everyone has banked or busted once, no more new
+    /// players can be added; reordering can still happen.
+    var isFirstRoundIncomplete: Bool {
+        guard !players.isEmpty else { return true }
+        let turns = orderedActions.filter { $0.kind == .bank || $0.kind == .bust }.count
+        return turns < players.count
+    }
+
+    var canAddPlayer: Bool {
+        endedAt == nil && players.count < 8 && isFirstRoundIncomplete
+    }
+
     init(name: String,
          targetScore: Int,
          rules: HouseRules,

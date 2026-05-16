@@ -101,6 +101,47 @@ final class GameFlowTests: XCTestCase {
         XCTAssertEqual(game.orderedPlayers[1].bankedScore, 600, "Jules's later bank must remain intact after the edit")
     }
 
+    func test_reorderPlayers_keepsActivePlayerActive() {
+        let game = makeGame(playerNames: ["Maya", "Jules", "Theo"])
+        let engine = GameEngine(game: game, context: context)
+        // Maya banks (active passes to Jules)
+        engine.addToPending(500); engine.bank()
+        XCTAssertEqual(game.activePlayer?.name, "Jules")
+        // Reverse the order; the same physical player should still be active.
+        let theoID = game.orderedPlayers[2].id
+        let julesID = game.orderedPlayers[1].id
+        let mayaID = game.orderedPlayers[0].id
+        engine.reorderPlayers(by: [theoID, julesID, mayaID])
+        XCTAssertEqual(game.activePlayer?.name, "Jules",
+                       "Jules was rolling before; she's still rolling after the shuffle")
+    }
+
+    func test_addPlayer_allowedInFirstRound() {
+        let game = makeGame(playerNames: ["Maya", "Jules"])
+        let engine = GameEngine(game: game, context: context)
+        XCTAssertTrue(game.canAddPlayer)
+        let added = engine.addPlayer(name: "Theo")
+        XCTAssertNotNil(added)
+        XCTAssertEqual(game.orderedPlayers.last?.name, "Theo")
+    }
+
+    func test_addPlayer_blocked_afterFirstRound() {
+        let game = makeGame(playerNames: ["Maya", "Jules"])
+        let engine = GameEngine(game: game, context: context)
+        // Both players take a turn (first round complete).
+        engine.addToPending(500); engine.bank()
+        engine.addToPending(500); engine.bank()
+        XCTAssertFalse(game.canAddPlayer, "First round complete — no more new players")
+        XCTAssertNil(engine.addPlayer(name: "Theo"))
+    }
+
+    func test_addPlayer_allowedWhenLastSeatYetToRoll() {
+        let game = makeGame(playerNames: ["Maya", "Jules"])
+        let engine = GameEngine(game: game, context: context)
+        engine.addToPending(500); engine.bank()  // Maya done; Jules still to roll
+        XCTAssertTrue(game.canAddPlayer)
+    }
+
     func test_setActionAmount_refusesBustEdit() {
         let game = makeGame()
         let engine = GameEngine(game: game, context: context)

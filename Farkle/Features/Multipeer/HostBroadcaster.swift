@@ -18,17 +18,20 @@ struct HostBroadcasterModifier: ViewModifier {
     /// A composite fingerprint of every field viewers care about. Equality on
     /// this string tells SwiftUI when to re-broadcast.
     private var snapshotFingerprint: String {
-        let bankFingerprint = game.orderedPlayers
+        // `orderedPlayers` is sorted by orderIndex, so a reorder reshuffles the
+        // joined string and a new player extends it — both trigger broadcast.
+        let playerFingerprint = game.orderedPlayers
             .map { "\($0.id.uuidString):\($0.bankedScore):\($0.name):\($0.avatarIndex)" }
             .joined(separator: "|")
         return [
+            String(game.players.count),
             String(game.actions.count),
             String(game.pendingTurnScore),
             String(game.pendingRollCount),
             String(game.activePlayerIndex),
             String(game.finalRoundTurnsRemaining),
             game.endedAt.map { String($0.timeIntervalSince1970) } ?? "-",
-            bankFingerprint
+            playerFingerprint
         ].joined(separator: "#")
     }
 
