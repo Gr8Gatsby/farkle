@@ -4,12 +4,18 @@ import SwiftData
 struct RootView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @Environment(\.modelContext) private var context
-    @Query(filter: #Predicate<Game> { $0.endedAt == nil }, sort: \.createdAt, order: .reverse)
-    private var inProgressGames: [Game]
+    // Include ended games too so the winner celebration can render — the
+    // active-game lookup below uses this list, and `inProgressGames` filters
+    // it just for the launch-time auto-resume.
+    @Query(sort: \Game.createdAt, order: .reverse) private var allGames: [Game]
     @State private var activeGameID: PersistentIdentifier?
     @State private var joinSession = FarkleNetSession()
     @State private var showJoinSheet = false
     @State private var showScoreboard = false
+
+    private var inProgressGames: [Game] {
+        allGames.filter { $0.endedAt == nil }
+    }
 
     var body: some View {
         Group {
@@ -21,9 +27,11 @@ struct RootView: View {
                     showScoreboard = false
                 }
                 .transition(.opacity)
-            } else if let id = activeGameID, let game = inProgressGames.first(where: { $0.persistentModelID == id }) {
-                ActiveGameView(game: game, onExit: { activeGameID = nil })
-                    .transition(.opacity)
+            } else if let id = activeGameID, let game = allGames.first(where: { $0.persistentModelID == id }) {
+                ActiveGameView(game: game, onExit: { newID in
+                    activeGameID = newID
+                })
+                .transition(.opacity)
             } else {
                 MainTabsView(
                     onResume: { game in activeGameID = game.persistentModelID },

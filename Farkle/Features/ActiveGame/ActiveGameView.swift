@@ -3,7 +3,8 @@ import SwiftData
 
 struct ActiveGameView: View {
     @Bindable var game: Game
-    var onExit: () -> Void
+    /// nil = leave to Home; non-nil = switch to that game id (rematch).
+    var onExit: (PersistentIdentifier?) -> Void
 
     @Environment(\.modelContext) private var context
     @State private var showBankConfirm = false
@@ -37,11 +38,11 @@ struct ActiveGameView: View {
                          onUndo: {
                 engine.undoLast()  // undoes endGame entry; rebuild restores game
             },
-                         onExit: onExit,
+                         onExit: { onExit(nil) },
                          onRematch: rematch,
                          session: netSession)
         } else if game.isInFinalRound {
-            FinalRoundView(game: game, onExit: onExit, session: netSession)
+            FinalRoundView(game: game, onExit: { onExit(nil) }, session: netSession)
         } else {
             ZStack {
                 PaperBackground()
@@ -164,7 +165,7 @@ struct ActiveGameView: View {
             .alert("Leave game?", isPresented: $showExitConfirm) {
                 Button("Leave", role: .destructive) {
                     netSession.stopHosting()
-                    onExit()
+                    onExit(nil)
                 }
                 Button("Stay", role: .cancel) {}
             } message: {
@@ -346,6 +347,7 @@ struct ActiveGameView: View {
                         })
         context.insert(next)
         try? context.save()
-        onExit()
+        netSession.stopHosting()  // close the old session; new game can re-host on appear
+        onExit(next.persistentModelID)
     }
 }
