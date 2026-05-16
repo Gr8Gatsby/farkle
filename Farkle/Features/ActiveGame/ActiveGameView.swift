@@ -25,7 +25,8 @@ struct ActiveGameView: View {
                 engine.undoLast()  // undoes endGame entry; rebuild restores game
             },
                          onExit: onExit,
-                         onRematch: rematch)
+                         onRematch: rematch,
+                         session: netSession)
         } else if game.isInFinalRound {
             FinalRoundView(game: game, onExit: onExit, session: netSession)
                 .hostBroadcaster(game: game, session: netSession)
@@ -36,7 +37,7 @@ struct ActiveGameView: View {
                     topBar
                     ScrollView {
                         VStack(spacing: 14) {
-                            NowRollingBanner(game: game)
+                            NowRollingBanner(game: game, session: netSession)
                             PendingTurnCard(
                                 game: game,
                                 markHotDice: $markHotDice,
@@ -45,9 +46,10 @@ struct ActiveGameView: View {
                                 onOpenHelper: { showScoreHelper = true },
                                 onOpenKeypad: { showKeypad = true }
                             )
-                            StandingsLadder(game: game)
+                            StandingsLadder(game: game, session: netSession)
                             RecentActionsLog(game: game,
-                                             onTap: { entry in actionBeingEdited = entry })
+                                             onTap: { entry in actionBeingEdited = entry },
+                                             session: netSession)
                             Color.clear.frame(height: 8)
                         }
                         .padding(.horizontal, 14)
@@ -67,7 +69,8 @@ struct ActiveGameView: View {
                         markHotDice = false
                         showBankConfirm = false
                     },
-                    onCancel: { showBankConfirm = false }
+                    onCancel: { showBankConfirm = false },
+                    session: netSession
                 )
                 .presentationDetents([.medium])
                 .presentationBackground(Color.paper)
@@ -123,7 +126,8 @@ struct ActiveGameView: View {
                         engine.undo(actionID: entry.id)
                         actionBeingEdited = nil
                     },
-                    onCancel: { actionBeingEdited = nil }
+                    onCancel: { actionBeingEdited = nil },
+                    session: netSession
                 )
                 .presentationDetents([.fraction(0.7)])
                 .presentationDragIndicator(.visible)
@@ -331,8 +335,8 @@ struct ActiveGameView: View {
 
     private func finalRoundHint(newTotal: Int, bar: Int) -> String {
         if newTotal > bar { return "WINS! ▸" }
-        let need = bar - newTotal + 1
-        return "SHORT BY \(need.formatted())"
+        if newTotal == bar { return "TIE — TRIGGER WINS" }
+        return "SHORT BY \((bar - newTotal).formatted())"
     }
 
     private var canBank: Bool {

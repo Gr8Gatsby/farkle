@@ -3,6 +3,7 @@ import SwiftUI
 struct RecentActionsLog: View {
     let game: Game
     var onTap: (ActionLogEntry) -> Void
+    var session: FarkleNetSession? = nil
 
     var body: some View {
         let recent = Array(game.orderedActions.reversed().prefix(5))
@@ -35,7 +36,10 @@ struct RecentActionsLog: View {
             onTap(entry)
         } label: {
             HStack(spacing: 10) {
-                AvatarView(name: player?.name ?? "?", colorIndex: player?.avatarIndex ?? 0, size: 20)
+                AvatarView(name: player?.name ?? "?",
+                           colorIndex: player?.avatarIndex ?? 0,
+                           size: 20,
+                           photoData: player.flatMap { session?.photoData(for: $0.id) })
                 HStack(spacing: 4) {
                     Text(player?.name ?? "—")
                         .font(.ui(12, weight: .semibold))

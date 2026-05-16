@@ -27,8 +27,16 @@ struct GameSnapshot: Codable, Equatable {
     var endedAt: Date?
     var winnerPlayerID: UUID?
 
+    /// Joiner-supplied player avatars. Keyed by player UUID. Optional —
+    /// players without a claim render the initial-in-circle avatar.
+    var playerClaims: [PlayerClaim] = []
+
     var isInFinalRound: Bool {
         finalRoundTriggeredByPlayerID != nil && endedAt == nil
+    }
+
+    func photoData(for playerID: UUID) -> Data? {
+        playerClaims.first(where: { $0.playerID == playerID })?.photoJPEG
     }
 }
 

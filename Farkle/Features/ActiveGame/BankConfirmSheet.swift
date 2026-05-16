@@ -5,6 +5,7 @@ struct BankConfirmSheet: View {
     let hotDice: Bool
     var onConfirm: () -> Void
     var onCancel: () -> Void
+    var session: FarkleNetSession? = nil
 
     var body: some View {
         guard let player = game.activePlayer else {
@@ -13,6 +14,8 @@ struct BankConfirmSheet: View {
         let was = player.bankedScore
         let now = was + game.pendingTurnScore
         let willTriggerFinal = game.finalRoundTriggeredByPlayerID == nil && now >= game.targetScore
+        let willEndGame = game.isInFinalRound && game.finalRoundTurnsRemaining == 1
+        let willWinNow = willEndGame && now > (game.scoreToBeat ?? game.targetScore)
         let nextPlayerName = nextPlayer()?.name
 
         return AnyView(
@@ -24,20 +27,10 @@ struct BankConfirmSheet: View {
                     .tracking(1.4)
                     .foregroundStyle(Color.ink3)
                     .padding(.top, 12)
-                (
-                    Text(willTriggerFinal ? "\(player.name) " : "Bank ")
-                        .font(.display(24))
-                        .foregroundStyle(Color.ink) +
-                    Text(willTriggerFinal ? "hits the target" : "+\(game.pendingTurnScore)")
-                        .font(.display(24, italic: true))
-                        .foregroundStyle(Color.walnut) +
-                    Text(willTriggerFinal ? "." : " for \(player.name)?")
-                        .font(.display(24))
-                        .foregroundStyle(Color.ink)
-                )
-                .multilineTextAlignment(.center)
-                .padding(.top, 4)
-                .padding(.horizontal, 24)
+                title(player: player, willTriggerFinal: willTriggerFinal,
+                      willEndGame: willEndGame, willWinNow: willWinNow)
+                    .padding(.top, 4)
+                    .padding(.horizontal, 24)
 
                 deltaCard(player: player, was: was, now: now)
                     .padding(.horizontal, 16)
@@ -66,9 +59,10 @@ struct BankConfirmSheet: View {
                     Button {
                         onConfirm()
                     } label: {
-                        Text(willTriggerFinal
-                             ? "Bank & start final round →"
-                             : "Bank & pass to \(nextPlayerName ?? "next") →")
+                        Text(ctaLabel(willWinNow: willWinNow,
+                                      willEndGame: willEndGame,
+                                      willTriggerFinal: willTriggerFinal,
+                                      nextPlayerName: nextPlayerName))
                     }
                     .buttonStyle(WalnutButtonStyle(size: .regular, fullWidth: true))
                 }
@@ -79,10 +73,46 @@ struct BankConfirmSheet: View {
         )
     }
 
+    private func title(player: Player, willTriggerFinal: Bool,
+                       willEndGame: Bool, willWinNow: Bool) -> some View {
+        let amount = "+\(game.pendingTurnScore.formatted())"
+        let composed: Text
+        if willWinNow {
+            composed = Text("\(player.name) ").font(.display(24)).foregroundStyle(Color.ink) +
+                Text("wins").font(.display(24, italic: true)).foregroundStyle(Color.walnut) +
+                Text(" with \(amount)?").font(.display(24)).foregroundStyle(Color.ink)
+        } else if willEndGame {
+            composed = Text("Bank ").font(.display(24)).foregroundStyle(Color.ink) +
+                Text(amount).font(.display(24, italic: true)).foregroundStyle(Color.walnut) +
+                Text(" to end the game?").font(.display(24)).foregroundStyle(Color.ink)
+        } else if willTriggerFinal {
+            composed = Text("\(player.name) ").font(.display(24)).foregroundStyle(Color.ink) +
+                Text("hits the target").font(.display(24, italic: true)).foregroundStyle(Color.walnut) +
+                Text(".").font(.display(24)).foregroundStyle(Color.ink)
+        } else {
+            composed = Text("Bank ").font(.display(24)).foregroundStyle(Color.ink) +
+                Text(amount).font(.display(24, italic: true)).foregroundStyle(Color.walnut) +
+                Text(" for \(player.name)?").font(.display(24)).foregroundStyle(Color.ink)
+        }
+        return composed.multilineTextAlignment(.center)
+    }
+
+    private func ctaLabel(willWinNow: Bool, willEndGame: Bool,
+                          willTriggerFinal: Bool, nextPlayerName: String?) -> String {
+        if willWinNow { return "Bank & win 🎉" }
+        if willEndGame { return "Bank & end the game" }
+        if willTriggerFinal { return "Bank & start final round →" }
+        return "Bank & pass to \(nextPlayerName ?? "next") →"
+    }
+
     private func deltaCard(player: Player, was: Int, now: Int) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                AvatarView(name: player.name, colorIndex: player.avatarIndex, size: 36, active: true)
+                AvatarView(name: player.name,
+                           colorIndex: player.avatarIndex,
+                           size: 36,
+                           active: true,
+                           photoData: session?.photoData(for: player.id))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(player.name)
                         .font(.ui(13, weight: .semibold))

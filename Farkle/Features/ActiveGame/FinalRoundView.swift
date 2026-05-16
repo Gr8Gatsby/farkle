@@ -63,7 +63,8 @@ struct FinalRoundView: View {
                     markHotDice = false
                     showBankConfirm = false
                 },
-                onCancel: { showBankConfirm = false }
+                onCancel: { showBankConfirm = false },
+                session: session
             )
             .presentationDetents([.medium])
             .presentationBackground(Color.paper)
@@ -119,7 +120,8 @@ struct FinalRoundView: View {
                     engine.undo(actionID: entry.id)
                     actionBeingEdited = nil
                 },
-                onCancel: { actionBeingEdited = nil }
+                onCancel: { actionBeingEdited = nil },
+                session: session
             )
             .presentationDetents([.fraction(0.7)])
             .presentationDragIndicator(.visible)
@@ -229,10 +231,13 @@ struct FinalRoundView: View {
         if let player = game.activePlayer {
             let pending = game.pendingTurnScore
             let projected = player.bankedScore + pending
-            let need = max(0, scoreToBeat - player.bankedScore + 1)
 
             HStack(spacing: 12) {
-                AvatarView(name: player.name, colorIndex: player.avatarIndex, size: 56, active: true)
+                AvatarView(name: player.name,
+                           colorIndex: player.avatarIndex,
+                           size: 56,
+                           active: true,
+                           photoData: session.photoData(for: player.id))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("ROLLING NOW")
                         .font(.ui(10, weight: .bold))
@@ -241,7 +246,7 @@ struct FinalRoundView: View {
                     Text(player.name)
                         .font(.display(28, italic: true))
                         .foregroundStyle(Color.paper)
-                    Text("at \(player.bankedScore.formatted()) — needs \(need.formatted()) to win")
+                    Text("at \(player.bankedScore.formatted()) — beat \(scoreToBeat.formatted()) to win")
                         .font(.ui(12))
                         .foregroundStyle(Color.paper.opacity(0.75))
                 }
@@ -282,23 +287,18 @@ struct FinalRoundView: View {
 
     // MARK: remaining players
 
+    @ViewBuilder
     private var remainingPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("STILL TO ROLL")
-                .font(.ui(10, weight: .bold))
-                .tracking(1.6)
-                .foregroundStyle(Color.paper.opacity(0.55))
-                .padding(.horizontal, 4)
-            let queue = game.remainingFinalRoundPlayers
-            VStack(spacing: 0) {
-                if queue.isEmpty {
-                    Text("No players left.")
-                        .font(.ui(13))
-                        .foregroundStyle(Color.paper.opacity(0.7))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
+        // Exclude the player currently rolling — they're shown in the hero card above.
+        let queue = game.remainingFinalRoundPlayers.filter { $0.id != game.activePlayer?.id }
+        if !queue.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("STILL TO ROLL")
+                    .font(.ui(10, weight: .bold))
+                    .tracking(1.6)
+                    .foregroundStyle(Color.paper.opacity(0.55))
+                    .padding(.horizontal, 4)
+                VStack(spacing: 0) {
                     ForEach(Array(queue.enumerated()), id: \.element.id) { idx, player in
                         rowRemaining(player: player, isNext: idx == 0)
                         if idx < queue.count - 1 {
@@ -306,21 +306,24 @@ struct FinalRoundView: View {
                         }
                     }
                 }
+                .padding(8)
+                .background(Color.black.opacity(0.22))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.paper.opacity(0.06), lineWidth: 0.5)
+                )
             }
-            .padding(8)
-            .background(Color.black.opacity(0.22))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.paper.opacity(0.06), lineWidth: 0.5)
-            )
         }
     }
 
     private func rowRemaining(player: Player, isNext: Bool) -> some View {
-        let need = max(0, scoreToBeat - player.bankedScore + 1)
-        return HStack(spacing: 10) {
-            AvatarView(name: player.name, colorIndex: player.avatarIndex, size: 24, active: isNext)
+        HStack(spacing: 10) {
+            AvatarView(name: player.name,
+                       colorIndex: player.avatarIndex,
+                       size: 24,
+                       active: isNext,
+                       photoData: session.photoData(for: player.id))
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(player.name)
@@ -337,7 +340,7 @@ struct FinalRoundView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
                     }
                 }
-                Text("at \(player.bankedScore.formatted()) · needs \(need.formatted())")
+                Text("at \(player.bankedScore.formatted()) · beat \(scoreToBeat.formatted())")
                     .font(.ui(10))
                     .foregroundStyle(Color.paper.opacity(0.65))
             }
@@ -388,7 +391,10 @@ struct FinalRoundView: View {
             actionBeingEdited = entry
         } label: {
             HStack(spacing: 10) {
-                AvatarView(name: player?.name ?? "?", colorIndex: player?.avatarIndex ?? 0, size: 20)
+                AvatarView(name: player?.name ?? "?",
+                           colorIndex: player?.avatarIndex ?? 0,
+                           size: 20,
+                           photoData: player.flatMap { session.photoData(for: $0.id) })
                 HStack(spacing: 4) {
                     Text(player?.name ?? "—")
                         .font(.ui(12, weight: .semibold))
@@ -541,7 +547,7 @@ struct FinalRoundView: View {
 
     private func hint(newTotal: Int) -> String {
         if newTotal > scoreToBeat { return "WINS!" }
-        let need = scoreToBeat - newTotal + 1
-        return "SHORT BY \(need.formatted())"
+        if newTotal == scoreToBeat { return "TIE — TRIGGER WINS" }
+        return "SHORT BY \((scoreToBeat - newTotal).formatted())"
     }
 }

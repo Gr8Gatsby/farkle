@@ -8,6 +8,7 @@ struct EditActionSheet: View {
     var onSave: (Int) -> Void
     var onUndo: () -> Void
     var onCancel: () -> Void
+    var session: FarkleNetSession? = nil
 
     @State private var entry: String = ""
 
@@ -31,7 +32,10 @@ struct EditActionSheet: View {
 
             if let player {
                 HStack(spacing: 10) {
-                    AvatarView(name: player.name, colorIndex: player.avatarIndex, size: 36)
+                    AvatarView(name: player.name,
+                               colorIndex: player.avatarIndex,
+                               size: 36,
+                               photoData: session?.photoData(for: player.id))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(player.name)
                             .font(.ui(15, weight: .semibold))

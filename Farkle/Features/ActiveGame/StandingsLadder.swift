@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StandingsLadder: View {
     let game: Game
+    var session: FarkleNetSession? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -34,7 +35,10 @@ struct StandingsLadder: View {
                 .font(.mono(11, weight: .bold))
                 .foregroundStyle(Color.ink3.opacity(0.7))
                 .frame(width: 14)
-            AvatarView(name: player.name, colorIndex: player.avatarIndex, size: 22)
+            AvatarView(name: player.name,
+                       colorIndex: player.avatarIndex,
+                       size: 22,
+                       photoData: session?.photoData(for: player.id))
             HStack(spacing: 6) {
                 Text(player.name)
                     .font(.ui(13, weight: .medium))

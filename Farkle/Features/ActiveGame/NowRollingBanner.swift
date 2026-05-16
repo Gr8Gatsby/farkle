@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NowRollingBanner: View {
     let game: Game
+    var session: FarkleNetSession? = nil
     @State private var pulse = false
 
     var body: some View {
@@ -14,7 +15,8 @@ struct NowRollingBanner: View {
                     AvatarView(name: player.name,
                                colorIndex: player.avatarIndex,
                                size: 48,
-                               active: true)
+                               active: true,
+                               photoData: session?.photoData(for: player.id))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("NOW ROLLING")
                             .font(.ui(10, weight: .bold))

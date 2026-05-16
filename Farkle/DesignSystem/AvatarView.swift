@@ -5,6 +5,7 @@ struct AvatarView: View {
     var colorIndex: Int
     var size: CGFloat = 36
     var active: Bool = false
+    var photoData: Data? = nil
 
     private var initial: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -14,21 +15,31 @@ struct AvatarView: View {
 
     var body: some View {
         let colors = AvatarPalette.colors(for: colorIndex)
-        Text(initial)
-            .font(.display(size * 0.5))
-            .foregroundStyle(colors.fg)
-            .frame(width: size, height: size)
-            .background(Circle().fill(colors.bg))
-            .overlay(
-                Circle()
-                    .stroke(active ? colors.bg : Color.clear, lineWidth: 2)
-                    .padding(-3)
-                    .background(
-                        Circle()
-                            .stroke(active ? Color.paper : Color.clear, lineWidth: 3)
-                            .padding(-3)
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.18), radius: active ? 8 : 2, x: 0, y: active ? 4 : 1)
+        Group {
+            if let photoData, let uiImage = UIImage(data: photoData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+            } else {
+                Text(initial)
+                    .font(.display(size * 0.5))
+                    .foregroundStyle(colors.fg)
+                    .frame(width: size, height: size)
+                    .background(Circle().fill(colors.bg))
+            }
+        }
+        .overlay(
+            Circle()
+                .stroke(active ? colors.bg : Color.clear, lineWidth: 2)
+                .padding(-3)
+                .background(
+                    Circle()
+                        .stroke(active ? Color.paper : Color.clear, lineWidth: 3)
+                        .padding(-3)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.18), radius: active ? 8 : 2, x: 0, y: active ? 4 : 1)
     }
 }

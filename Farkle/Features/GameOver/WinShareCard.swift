@@ -5,6 +5,7 @@ import SwiftUI
 /// touch targets, no system chrome, generous type).
 struct WinShareCard: View {
     let game: Game
+    var photoFor: (UUID) -> Data? = { _ in nil }
 
     private var winner: Player? {
         game.orderedPlayers.first(where: { $0.id == game.winnerPlayerID })
@@ -36,8 +37,7 @@ struct WinShareCard: View {
 
                 if let winner {
                     VStack(spacing: 22) {
-                        AvatarView(name: winner.name, colorIndex: winner.avatarIndex, size: 220, active: true)
-                            .shadow(color: Color.gold.opacity(0.6), radius: 30, x: 0, y: 0)
+                        winnerCrest(winner: winner)
                         (
                             Text("\(winner.name)\n").font(.display(120, italic: true))
                                 .foregroundStyle(Color.paper) +
@@ -66,7 +66,10 @@ struct WinShareCard: View {
                                     .font(.display(46, italic: true))
                                     .foregroundStyle(idx == 0 ? Color.gold2 : Color.paper.opacity(0.55))
                                     .frame(width: 56, alignment: .leading)
-                                AvatarView(name: p.name, colorIndex: p.avatarIndex, size: 60)
+                                AvatarView(name: p.name,
+                                           colorIndex: p.avatarIndex,
+                                           size: 60,
+                                           photoData: photoFor(p.id))
                                 Text(p.name)
                                     .font(.ui(38, weight: .medium))
                                     .foregroundStyle(Color.paper)
@@ -107,6 +110,51 @@ struct WinShareCard: View {
         .frame(width: 1080, height: 1080)
     }
 
+    /// Winner avatar / monogram with a laurel + trophy crest behind it.
+    private func winnerCrest(winner: Player) -> some View {
+        ZStack {
+            // Soft gold radial halo
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.gold.opacity(0.45), .clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 260
+                    )
+                )
+                .frame(width: 460, height: 460)
+
+            // Laurel rings
+            Circle()
+                .stroke(Color.gold.opacity(0.5), lineWidth: 2)
+                .frame(width: 320, height: 320)
+            Circle()
+                .stroke(Color.gold.opacity(0.25), lineWidth: 1)
+                .frame(width: 360, height: 360)
+
+            // The portrait (photo if claimed, monogram otherwise)
+            AvatarView(name: winner.name,
+                       colorIndex: winner.avatarIndex,
+                       size: 240,
+                       active: true,
+                       photoData: photoFor(winner.id))
+                .shadow(color: Color.gold.opacity(0.7), radius: 30, x: 0, y: 0)
+
+            // Trophy badge clipped to the bottom of the avatar
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 56, weight: .bold))
+                .foregroundStyle(Color.walnut)
+                .padding(20)
+                .background(Color.gold)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.paper, lineWidth: 4))
+                .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 6)
+                .offset(x: 90, y: 100)
+        }
+        .frame(width: 460, height: 460)
+    }
+
     private var dateLine: String {
         let f = DateFormatter()
         f.dateStyle = .long
@@ -117,8 +165,9 @@ struct WinShareCard: View {
 /// Render a Game's win card to a UIImage suitable for the share sheet.
 @MainActor
 enum WinImageRenderer {
-    static func image(for game: Game) -> UIImage? {
-        let renderer = ImageRenderer(content: WinShareCard(game: game))
+    static func image(for game: Game, session: FarkleNetSession? = nil) -> UIImage? {
+        let card = WinShareCard(game: game) { id in session?.photoData(for: id) }
+        let renderer = ImageRenderer(content: card)
         renderer.scale = 2.0
         return renderer.uiImage
     }

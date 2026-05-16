@@ -30,6 +30,19 @@ final class FarkleNetSession: NSObject {
     private var browser: MCNearbyServiceBrowser?
     private var lastSentSeq: Int = 0
 
+    /// On the host: accumulated player claims (photos) from connected viewers,
+    /// keyed by player UUID. Merged into every outgoing snapshot.
+    private(set) var playerClaims: [UUID: PlayerClaim] = [:]
+
+    /// Resolve a player's avatar photo. Hosts read from local claims; joiners
+    /// fall back to whatever's in the latest snapshot.
+    func photoData(for playerID: UUID) -> Data? {
+        if role == .host {
+            return playerClaims[playerID]?.photoJPEG
+        }
+        return latestSnapshot?.photoData(for: playerID)
+    }
+
     override init() {
         let name = UIDevice.current.name
         let trimmed = String(name.prefix(63))
@@ -79,16 +92,14 @@ final class FarkleNetSession: NSObject {
     }
 
     func broadcast(snapshot: GameSnapshot) {
-        guard role == .host, let session, !session.connectedPeers.isEmpty else {
-            latestSnapshot = snapshot
-            return
-        }
         var snap = snapshot
+        snap.playerClaims = Array(playerClaims.values)
         lastSentSeq += 1
         snap.seq = lastSentSeq
         latestSnapshot = snap
+        guard role == .host, let session, !session.connectedPeers.isEmpty else { return }
         do {
-            let data = try JSONEncoder().encode(snap)
+            let data = try JSONEncoder().encode(MultipeerMessage.snapshot(snap))
             try session.send(data, toPeers: session.connectedPeers, with: .reliable)
         } catch {
             // Silent: viewers will resync on next change.
@@ -135,6 +146,17 @@ final class FarkleNetSession: NSObject {
         return true
     }
 
+    /// Joiner: send a player-identity claim (with optional photo) to the host.
+    func sendClaim(_ claim: PlayerClaim) {
+        guard role == .joiner, let session, !session.connectedPeers.isEmpty else { return }
+        do {
+            let data = try JSONEncoder().encode(MultipeerMessage.claim(claim))
+            try session.send(data, toPeers: session.connectedPeers, with: .reliable)
+        } catch {
+            // Silent — the joiner's UI keeps the photo locally regardless.
+        }
+    }
+
     func leaveSession() {
         browser?.stopBrowsingForPeers()
         browser = nil
@@ -169,7 +191,7 @@ extension FarkleNetSession: MCSessionDelegate {
             case .connected:
                 if self.role == .host, let snap = self.latestSnapshot {
                     // Catch the new peer up with the current state.
-                    if let data = try? JSONEncoder().encode(snap) {
+                    if let data = try? JSONEncoder().encode(MultipeerMessage.snapshot(snap)) {
                         try? session.send(data, toPeers: [peerID], with: .reliable)
                     }
                 }
@@ -187,12 +209,22 @@ extension FarkleNetSession: MCSessionDelegate {
     }
 
     nonisolated func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-        guard let snap = try? JSONDecoder().decode(GameSnapshot.self, from: data) else { return }
+        guard let message = try? JSONDecoder().decode(MultipeerMessage.self, from: data) else { return }
         Task { @MainActor in
-            if let current = self.latestSnapshot, snap.seq <= current.seq, current.gameID == snap.gameID {
-                return  // stale
+            switch message {
+            case .snapshot(let snap):
+                if let current = self.latestSnapshot, snap.seq <= current.seq, current.gameID == snap.gameID {
+                    return  // stale
+                }
+                self.latestSnapshot = snap
+            case .claim(let claim):
+                guard self.role == .host else { return }
+                self.playerClaims[claim.playerID] = claim
+                if let current = self.latestSnapshot {
+                    // Re-broadcast so every viewer gets the new claim merged in.
+                    self.broadcast(snapshot: current)
+                }
             }
-            self.latestSnapshot = snap
         }
     }
 

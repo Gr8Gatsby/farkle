@@ -5,9 +5,11 @@ struct GameOverView: View {
     var onUndo: () -> Void
     var onExit: () -> Void
     var onRematch: () -> Void
+    var session: FarkleNetSession? = nil
 
     @State private var shareImage: UIImage?
     @State private var showShareSheet = false
+    @State private var didAutoPrerender = false
 
     private var winner: Player? {
         game.players.first(where: { $0.id == game.winnerPlayerID })
@@ -47,8 +49,25 @@ struct GameOverView: View {
 
                 VStack(spacing: 14) {
                     if let winner {
-                        ZStack(alignment: .bottom) {
-                            AvatarView(name: winner.name, colorIndex: winner.avatarIndex, size: 92, active: true)
+                        ZStack {
+                            Circle()
+                                .fill(RadialGradient(colors: [Color.gold.opacity(0.35), .clear],
+                                                     center: .center, startRadius: 0, endRadius: 120))
+                                .frame(width: 220, height: 220)
+                            AvatarView(name: winner.name,
+                                       colorIndex: winner.avatarIndex,
+                                       size: 110,
+                                       active: true,
+                                       photoData: session?.photoData(for: winner.id))
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(Color.walnut)
+                                .padding(10)
+                                .background(Color.gold)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.paper, lineWidth: 2))
+                                .shadow(color: Color.black.opacity(0.45), radius: 6, x: 0, y: 3)
+                                .offset(x: 42, y: 42)
                             Text(winner.bankedScore.formatted())
                                 .font(.mono(12, weight: .bold))
                                 .tracking(1)
@@ -57,9 +76,10 @@ struct GameOverView: View {
                                 .padding(.vertical, 4)
                                 .background(Color.gold)
                                 .clipShape(Capsule())
-                                .offset(y: 8)
+                                .offset(y: 64)
                                 .shadow(color: Color.black.opacity(0.3), radius: 6, x: 0, y: 4)
                         }
+                        .padding(.bottom, 14)
                     }
                     standings
                     Button(action: onUndo) {
@@ -137,12 +157,19 @@ struct GameOverView: View {
                 ShareSheet(items: shareItems(image: image))
             }
         }
+        .onAppear {
+            // Render the win image once so a preview thumbnail is available.
+            if !didAutoPrerender {
+                shareImage = WinImageRenderer.image(for: game, session: session)
+                didAutoPrerender = true
+            }
+        }
     }
 
     @MainActor
     private func share() {
         if shareImage == nil {
-            shareImage = WinImageRenderer.image(for: game)
+            shareImage = WinImageRenderer.image(for: game, session: session)
         }
         if shareImage != nil {
             showShareSheet = true
@@ -166,7 +193,10 @@ struct GameOverView: View {
                         .font(.display(20, italic: true))
                         .foregroundStyle(idx == 0 ? Color.gold2 : Color.paper.opacity(0.5))
                         .frame(width: 24)
-                    AvatarView(name: p.name, colorIndex: p.avatarIndex, size: 28)
+                    AvatarView(name: p.name,
+                               colorIndex: p.avatarIndex,
+                               size: 28,
+                               photoData: session?.photoData(for: p.id))
                     Text(p.name)
                         .font(.ui(14, weight: .medium))
                         .foregroundStyle(Color.paper)

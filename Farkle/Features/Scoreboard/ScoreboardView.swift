@@ -12,6 +12,7 @@ struct ScoreboardView: View {
     @State private var currentFlavor: FlavorMessage?
     @State private var liveFeed: [ActionSnapshot] = []
     @State private var identity: JoinerIdentity?
+    @State private var photoPickerPlayer: PlayerSnapshot?
 
     private var snapshot: GameSnapshot? { session.latestSnapshot }
 
@@ -37,6 +38,13 @@ struct ScoreboardView: View {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         identity = choice
                     }
+                    if case .player(let id) = choice,
+                       let player = snap.players.first(where: { $0.id == id }) {
+                        // Send a claim immediately so the host sees who I am even
+                        // without a photo. Photo step is optional and follows.
+                        session.sendClaim(PlayerClaim(playerID: id, photoJPEG: nil))
+                        photoPickerPlayer = player
+                    }
                 }
                 .transition(.opacity)
             }
@@ -49,6 +57,19 @@ struct ScoreboardView: View {
             if let newSnap {
                 handleSnapshotChange(newSnap)
             }
+        }
+        .sheet(item: $photoPickerPlayer) { player in
+            PlayerPhotoPickerSheet(
+                player: player,
+                currentPhotoData: snapshot?.photoData(for: player.id),
+                onSave: { data in
+                    session.sendClaim(PlayerClaim(playerID: player.id, photoJPEG: data))
+                    photoPickerPlayer = nil
+                },
+                onCancel: { photoPickerPlayer = nil }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -205,7 +226,14 @@ struct ScoreboardView: View {
         let pending = isActive ? snap.pendingTurnScore : 0
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                AvatarView(name: player.name, colorIndex: player.avatarIndex, size: 30, active: isActive)
+                AvatarView(name: player.name,
+                           colorIndex: player.avatarIndex,
+                           size: 30,
+                           active: isActive,
+                           photoData: snap.photoData(for: player.id))
+                    .onTapGesture {
+                        if isMe { photoPickerPlayer = player }
+                    }
                 Text(player.name)
                     .font(.ui(13, weight: .semibold))
                     .foregroundStyle(Color.paper)
@@ -408,7 +436,11 @@ struct ScoreboardView: View {
                     .tracking(4)
                     .foregroundStyle(Color.gold)
                 if let winner {
-                    AvatarView(name: winner.name, colorIndex: winner.avatarIndex, size: 110, active: true)
+                    AvatarView(name: winner.name,
+                               colorIndex: winner.avatarIndex,
+                               size: 110,
+                               active: true,
+                               photoData: snap.photoData(for: winner.id))
                         .shadow(color: Color.gold.opacity(0.5), radius: 30)
                     (
                         Text("\(winner.name)\n").font(.display(64, italic: true))
