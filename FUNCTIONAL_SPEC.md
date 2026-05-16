@@ -56,8 +56,7 @@ Phone tracks scores; dice stay on the table.
 #### Final round (when the target is hit)
 - When a player banks a total ≥ the target, the **triggering player does not get another turn** — they're done.
 - Every other player gets exactly one more turn. Turn order continues normally.
-- A full-screen "FINAL ROUND" announcement is shown the moment the target is hit (named after the trigger player, with the score to beat and a list of remaining seats and how much each needs).
-- During the final round, the Now Rolling banner replaces "BANKED" with "BEAT: X" coaching, and the Bank-preview shows "WINS!" or "SHORT BY N" relative to the current high score.
+- The screen transitions to a dedicated felt-themed **Final Round screen** that hosts every remaining player's last roll. It shows: trigger player's name, score to beat, current player's avatar + gap to win, pending-turn controls (chips, keypad, score helper, hot-dice toggle), the "still to roll" queue with each player's deficit, and the Bank / Bust buttons with WINS! / SHORT BY N coaching on the preview.
 - The "score to beat" is the highest banked total at any moment — if a later player overtakes the trigger, the bar moves up for everyone after them.
 - After the last remaining player completes their turn, the highest total wins. Tie: trigger player wins (they got there first).
 
@@ -144,12 +143,14 @@ The heart of the app. Layout (top to bottom):
 - Helper is a reference list, not a calculator — the player still has to recognize their hand.
 
 ### 4.7 (06) Game Over (winner)
-- Felt-green celebration backdrop with confetti.
+- Felt-green celebration backdrop with continuous confetti.
 - Game name, winner's name in display italic, "wins.".
 - Winner's avatar with gold winning-score pill.
 - Final standings table.
-- **Critical "Wait — that's wrong" button**: undoes the winner's last bank and returns to Active Game (the game exits final-round/end state).
-- Secondary actions: **Recap** (opens read-only turn log) and **Rematch** (starts a new game with the same players and rules).
+- The screen stays visible until the user explicitly chooses **Rematch** or **Done**; the system never auto-navigates away.
+- **Critical "Wait — that's wrong" button**: undoes the winner's last bank and returns to the final round (the game exits ended state).
+- **Share the win** primary action: generates a 1080×1080 felt brag card image (winner, final standings, game name, date) and presents the iOS share sheet. The user can send it via Messages, Mail, Photos, social apps, AirDrop, etc.
+- **Rematch** (starts a new game with the same players and rules) and **Done** (exits to Home, the completed game is preserved in History).
 
 ### 4.8 (07) Game History
 - Header: total games, wins, win-rate. Win-rate is computed against a chosen "primary player" the user selects on first open (persisted setting).
@@ -240,3 +241,4 @@ None at spec time. Will be added here as they arise.
 - 2026-05-16 — Fix four/five/six-of-a-kind multipliers to match the standard Farkle rule (per Wikipedia and dicegamedepot/farkle.games): four = 2×, five = 3×, six = 4× (the three-of-a-kind value). The design bundle's cheat sheet used 2/4/8 (a less-common doubling variant). Updated in the scoring engine, the Rules cheat sheet, and the Score Helper rows; tests updated accordingly.
 - 2026-05-16 — Switch to the user's house variant. Three 1s = 300 (small bonus over the uniform face×100); three of any other face = face × 100; four / five / six of any face = fixed 1000 / 2000 / 3000. Added a new "4 of a kind with a pair = 1500" combo as a House Rule (default on; toggle in New Game and Settings). Score Helper restructured: per-face rows only for three-of-a-kind; four/five/six of a kind collapse to one row each since the value is face-independent. Defaults migrator bumped to v2 to enable the new combo on cached preferences.
 - 2026-05-16 — Final-round redesign. When a player banks past the target the game now shows a full-screen "FINAL ROUND" announcement (trigger player named, score to beat, remaining players each with the deficit they need to close). Trigger player explicitly does NOT get another turn. While the final round is active, the Now Rolling banner swaps "BANKED" for "BEAT: X" coaching and the Bank-preview shows "WINS!" / "SHORT BY N" relative to the current high score. The bar moves up if a later player overtakes the trigger. Recent Actions tap now opens an Edit/Undo sheet — bank amounts can be edited in place (e.g., correct a typo without losing turn order); bust actions can only be undone. Engine gains `setActionAmount(actionID:newAmount:)` and `markFinalRoundAnnouncementShown()`. Game model persists `finalRoundAnnouncementShown` so the announcement survives app restarts. 7 new tests cover the new paths.
+- 2026-05-16 — Final-round special screen hosts the rolls. Promoted FinalRoundAnnouncement to a full FinalRoundView that stays up for the entire final round (felt theme, hero with score-to-beat, current-player card with deficit, pending-turn controls, "still to roll" queue, recent-final-round turns, Bank/Bust with WIN/SHORT preview). Game Over: added "Share the win" — renders a 1080×1080 felt brag card (winner, final standings, game name, date) via SwiftUI ImageRenderer and presents `UIActivityViewController`, so the win can go out via Messages/Mail/Photos/AirDrop/etc. Replaced the Recap shortcut with explicit Rematch / Done buttons; the celebration screen now requires explicit dismissal.

@@ -24,10 +24,8 @@ struct ActiveGameView: View {
             },
                          onExit: onExit,
                          onRematch: rematch)
-        } else if game.isInFinalRound && !game.finalRoundAnnouncementShown {
-            FinalRoundAnnouncement(game: game) {
-                engine.markFinalRoundAnnouncementShown()
-            }
+        } else if game.isInFinalRound {
+            FinalRoundView(game: game, onExit: onExit)
         } else {
             ZStack {
                 PaperBackground()

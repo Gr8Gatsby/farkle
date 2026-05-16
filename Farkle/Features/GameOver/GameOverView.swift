@@ -6,6 +6,9 @@ struct GameOverView: View {
     var onExit: () -> Void
     var onRematch: () -> Void
 
+    @State private var shareImage: UIImage?
+    @State private var showShareSheet = false
+
     private var winner: Player? {
         game.players.first(where: { $0.id == game.winnerPlayerID })
             ?? game.orderedPlayers.max(by: { $0.bankedScore < $1.bankedScore })
@@ -78,8 +81,41 @@ struct GameOverView: View {
                     }
                     .buttonStyle(.plain)
 
+                    Button {
+                        share()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "square.and.arrow.up.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Share the win")
+                                .font(.ui(15, weight: .bold))
+                        }
+                        .foregroundStyle(Color.walnut)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(Color.gold)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.45), radius: 0, x: 0, y: 3)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 10)
+
                     HStack(spacing: 8) {
-                        Button("Recap") { onExit() }
+                        Button { onRematch() } label: {
+                            Text("Rematch")
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Color.white.opacity(0.10))
+                                .foregroundStyle(Color.paper)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(Color.paper.opacity(0.20), lineWidth: 0.5)
+                                )
+                                .font(.ui(13, weight: .semibold))
+                        }
+                        .buttonStyle(.plain)
+                        Button("Done") { onExit() }
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
                             .background(Color.white.opacity(0.10))
@@ -87,26 +123,38 @@ struct GameOverView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color.paper.opacity(0.15), lineWidth: 0.5)
+                                    .stroke(Color.paper.opacity(0.20), lineWidth: 0.5)
                             )
                             .font(.ui(13, weight: .semibold))
-                        Button { onRematch() } label: {
-                            Text("Rematch")
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(Color.gold)
-                                .foregroundStyle(Color.walnut)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                .font(.ui(13, weight: .bold))
-                                .shadow(color: Color.black.opacity(0.4), radius: 0, x: 0, y: 3)
-                        }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 28)
             }
         }
+        .sheet(isPresented: $showShareSheet) {
+            if let image = shareImage {
+                ShareSheet(items: shareItems(image: image))
+            }
+        }
+    }
+
+    @MainActor
+    private func share() {
+        if shareImage == nil {
+            shareImage = WinImageRenderer.image(for: game)
+        }
+        if shareImage != nil {
+            showShareSheet = true
+        }
+    }
+
+    private func shareItems(image: UIImage) -> [Any] {
+        var items: [Any] = [image]
+        if let winner {
+            items.append("\(winner.name) won our Farkle game at \(winner.bankedScore.formatted()).")
+        }
+        return items
     }
 
     private var standings: some View {
