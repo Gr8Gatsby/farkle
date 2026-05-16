@@ -13,9 +13,7 @@ struct ScoreSheetEntry: Identifiable, Equatable {
 enum ScoreSheetSection: String, CaseIterable, Identifiable {
     case singles = "Singles"
     case threeOfAKind = "Three of a kind"
-    case fourOfAKind = "Four of a kind"
-    case fiveOfAKind = "Five of a kind"
-    case sixOfAKind = "Six of a kind"
+    case ofAKind = "Four / Five / Six of a kind"
     case specials = "Special combos"
     var id: String { rawValue }
 }
@@ -32,28 +30,19 @@ struct ScoreSheetCatalog {
             ]
         case .threeOfAKind:
             return (1...6).map { face in
-                let pts = face == 1 ? 1000 : face * 100
+                let pts = face == 1 ? 300 : face * 100
                 return ScoreSheetEntry(id: "three-\(face)", face: face, count: 3,
                                        label: "Three \(face)s", points: pts)
             }
-        case .fourOfAKind:
-            return (1...6).map { face in
-                let base = face == 1 ? 1000 : face * 100
-                return ScoreSheetEntry(id: "four-\(face)", face: face, count: 4,
-                                       label: "Four \(face)s", points: base * 2)
-            }
-        case .fiveOfAKind:
-            return (1...6).map { face in
-                let base = face == 1 ? 1000 : face * 100
-                return ScoreSheetEntry(id: "five-\(face)", face: face, count: 5,
-                                       label: "Five \(face)s", points: base * 3)
-            }
-        case .sixOfAKind:
-            return (1...6).map { face in
-                let base = face == 1 ? 1000 : face * 100
-                return ScoreSheetEntry(id: "six-\(face)", face: face, count: 6,
-                                       label: "Six \(face)s", points: base * 4)
-            }
+        case .ofAKind:
+            return [
+                ScoreSheetEntry(id: "four-oak", face: 0, count: 4,
+                                label: "Four of a kind", points: 1000),
+                ScoreSheetEntry(id: "five-oak", face: 0, count: 5,
+                                label: "Five of a kind", points: 2000),
+                ScoreSheetEntry(id: "six-oak", face: 0, count: 6,
+                                label: "Six of a kind", points: 3000)
+            ]
         case .specials:
             var out: [ScoreSheetEntry] = []
             if rules.straight {
@@ -66,7 +55,11 @@ struct ScoreSheetCatalog {
             }
             if rules.twoTriples {
                 out.append(ScoreSheetEntry(id: "two-triples", face: 0, count: 6,
-                                           label: "Two triples", points: 2500))
+                                           label: "Two triplets", points: 2500))
+            }
+            if rules.fourOfAKindWithPair {
+                out.append(ScoreSheetEntry(id: "four-pair", face: 0, count: 6,
+                                           label: "4 of a kind w/ pair", points: 1500))
             }
             return out
         }
@@ -196,9 +189,8 @@ struct ScoreHelperSheet: View {
     @ViewBuilder
     private func diceGlyph(for entry: ScoreSheetEntry) -> some View {
         if entry.face == 0 {
-            // special combo — show face icons specific to the combo
             HStack(spacing: 2) {
-                ForEach(diceFacesForSpecial(entry: entry), id: \.self) { face in
+                ForEach(Array(diceFacesForSpecial(entry: entry).enumerated()), id: \.offset) { _, face in
                     DieView(value: face, size: 14)
                 }
             }
@@ -216,6 +208,10 @@ struct ScoreHelperSheet: View {
         case "straight": return [1,2,3,4,5,6]
         case "three-pair": return [2,2,4,4,6,6]
         case "two-triples": return [3,3,3,5,5,5]
+        case "four-pair": return [4,4,4,4,6,6]
+        case "four-oak": return [4,4,4,4]
+        case "five-oak": return [5,5,5,5,5]
+        case "six-oak": return [6,6,6,6,6,6]
         default: return []
         }
     }

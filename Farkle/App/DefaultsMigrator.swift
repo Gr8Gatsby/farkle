@@ -10,17 +10,20 @@ enum DefaultsMigrator {
         let store = UserDefaults.standard
         let version = store.integer(forKey: rulesVersionKey)
 
-        if version < 1 {
+        if version < 2 {
             var rules: HouseRules = .default
             if let data = store.data(forKey: rulesDataKey),
                let decoded = try? JSONDecoder().decode(HouseRules.self, from: data) {
                 rules = decoded
             }
+            // v1: Two-triples on by default
             rules.twoTriples = true
+            // v2: 4-of-a-kind-with-a-pair on by default
+            rules.fourOfAKindWithPair = true
             if let encoded = try? JSONEncoder().encode(rules) {
                 store.set(encoded, forKey: rulesDataKey)
             }
-            store.set(1, forKey: rulesVersionKey)
+            store.set(2, forKey: rulesVersionKey)
         }
     }
 }

@@ -40,7 +40,9 @@ struct SettingsView: View {
                         divider
                         ruleToggleRow("Straight 1–6 = 1,500", keyPath: \.straight)
                         divider
-                        ruleToggleRow("Two triples = 2,500", keyPath: \.twoTriples)
+                        ruleToggleRow("Two triplets = 2,500", keyPath: \.twoTriples)
+                        divider
+                        ruleToggleRow("4 of a kind w/ pair = 1,500", keyPath: \.fourOfAKindWithPair)
                         divider
                         toggleRow("Must open with 500",
                                   isOn: Binding(get: { rules.mustOpenWith == 500 },

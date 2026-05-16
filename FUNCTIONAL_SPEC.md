@@ -40,8 +40,13 @@ Phone tracks scores; dice stay on the table.
 - House rules (toggleable, defaults in parens):
   - Three pairs = 1,500 (on)
   - Straight 1–6 = 1,500 (on)
-  - Two triples = 2,500 (on)
+  - Two triplets = 2,500 (on)
+  - 4 of a kind with a pair = 1,500 (on)
   - Must open with 500 (on)
+- Base scoring (always on):
+  - Single 1 = 100, Single 5 = 50
+  - Three 1s = 300, Three N (N≥2) = N × 100
+  - Four / Five / Six of a kind = 1,000 / 2,000 / 3,000 (any face)
 - The New Game screen prefills with the players from the most recent game (names + avatar colors). The user can edit any row, remove rows (down to one), or add up to eight.
 
 ### 3.3 Turn order
@@ -222,3 +227,4 @@ None at spec time. Will be added here as they arise.
 - 2026-05-16 — New Game refinements: prefill players (names + avatar colors) from the most recent game; flip Two-triples default to on (2,500); New Game sheet pinned to full-height `.large` detent with tighter top padding so the title and player rows sit near the top; trash icon now appears on every player row when there are at least two, so any seat can be removed.
 - 2026-05-16 — Active Game polish: removed duplicate top safe-area padding so content sits right under the system bar (was leaving ~100pt of empty cream); enlarged the quick-add chip buttons (height 36→48, font 13→16) for a more tactile press. Score Helper rewritten from a dice-input calculator to a tappable scoresheet: each scoring combo in the rules is a row the player taps to accumulate; encourages players to spot their own hands instead of letting the phone do the math. Defaults migrator covers the change to the Two-triples house rule so cached preferences pick up the new default on first launch.
 - 2026-05-16 — Fix four/five/six-of-a-kind multipliers to match the standard Farkle rule (per Wikipedia and dicegamedepot/farkle.games): four = 2×, five = 3×, six = 4× (the three-of-a-kind value). The design bundle's cheat sheet used 2/4/8 (a less-common doubling variant). Updated in the scoring engine, the Rules cheat sheet, and the Score Helper rows; tests updated accordingly.
+- 2026-05-16 — Switch to the user's house variant. Three 1s = 300 (small bonus over the uniform face×100); three of any other face = face × 100; four / five / six of any face = fixed 1000 / 2000 / 3000. Added a new "4 of a kind with a pair = 1500" combo as a House Rule (default on; toggle in New Game and Settings). Score Helper restructured: per-face rows only for three-of-a-kind; four/five/six of a kind collapse to one row each since the value is face-independent. Defaults migrator bumped to v2 to enable the new combo on cached preferences.

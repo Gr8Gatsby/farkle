@@ -226,7 +226,9 @@ struct NewGameView: View {
                 ruleSeparator
                 ruleToggle("Straight 1–6 = 1,500", isOn: $rules.straight)
                 ruleSeparator
-                ruleToggle("Two triples = 2,500", isOn: $rules.twoTriples)
+                ruleToggle("Two triplets = 2,500", isOn: $rules.twoTriples)
+                ruleSeparator
+                ruleToggle("4 of a kind w/ pair = 1,500", isOn: $rules.fourOfAKindWithPair)
                 ruleSeparator
                 ruleToggle("Must open with 500",
                            isOn: Binding(
@@ -285,11 +287,13 @@ struct NewGameView: View {
     /// Apply changes in shipped default HouseRules to a previously cached blob.
     /// Versions:
     ///   1 — Two-triples flipped on.
+    ///   2 — 4-of-a-kind-with-a-pair flipped on.
     private func migrateRulesIfNeeded() {
-        if rulesVersion < 1 {
+        if rulesVersion < 2 {
             rules.twoTriples = true
+            rules.fourOfAKindWithPair = true
             if let data = try? JSONEncoder().encode(rules) { defaultRulesData = data }
-            rulesVersion = 1
+            rulesVersion = 2
         }
     }
 

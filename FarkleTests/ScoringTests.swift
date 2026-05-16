@@ -13,26 +13,38 @@ final class ScoringTests: XCTestCase {
         XCTAssertEqual(engine.score(dice: [5]).total, 50)
     }
 
-    func test_threeOnesScores1000() {
-        XCTAssertEqual(engine.score(dice: [1,1,1]).total, 1000)
+    func test_threeOnes_uniformFormula_300() {
+        // House variant: three of a kind = face × 100 uniformly. Three 1s = 300.
+        XCTAssertEqual(engine.score(dice: [1,1,1]).total, 300)
     }
 
     func test_threeOfAKind_face4_scores400() {
         XCTAssertEqual(engine.score(dice: [4,4,4]).total, 400)
     }
 
-    func test_fourOfAKind_doubles() {
-        XCTAssertEqual(engine.score(dice: [3,3,3,3]).total, 600)
+    func test_fourOfAKind_fixed_1000() {
+        XCTAssertEqual(engine.score(dice: [3,3,3,3]).total, 1000)
+        XCTAssertEqual(engine.score(dice: [6,6,6,6]).total, 1000)
     }
 
-    func test_fiveOfAKind_triples_3oak() {
-        // Standard Farkle: 5× = 3 × (three of a kind). Three 2s = 200 → five 2s = 600.
-        XCTAssertEqual(engine.score(dice: [2,2,2,2,2]).total, 600)
+    func test_fiveOfAKind_fixed_2000() {
+        XCTAssertEqual(engine.score(dice: [2,2,2,2,2]).total, 2000)
     }
 
-    func test_sixOfAKind_quadruples_3oak() {
-        // Standard Farkle: 6× = 4 × (three of a kind). Three 6s = 600 → six 6s = 2400.
-        XCTAssertEqual(engine.score(dice: [6,6,6,6,6,6]).total, 2400)
+    func test_sixOfAKind_fixed_3000() {
+        XCTAssertEqual(engine.score(dice: [6,6,6,6,6,6]).total, 3000)
+    }
+
+    func test_fourOfAKindWithPair_scores1500() {
+        // 4×5 + 2×3 → 4-of-a-kind w/ pair = 1500
+        XCTAssertEqual(engine.score(dice: [5,5,5,5,3,3]).total, 1500)
+    }
+
+    func test_fourOfAKindWithPair_disabled_falls_back() {
+        var r = HouseRules.default
+        r.fourOfAKindWithPair = false
+        // Four 5s = 1000, pair of 3s = 0 (no single 3 score)
+        XCTAssertEqual(ScoreHelperEngine(rules: r).score(dice: [5,5,5,5,3,3]).total, 1000)
     }
 
     func test_straight_oneThroughSix_scores1500() {
@@ -51,7 +63,7 @@ final class ScoringTests: XCTestCase {
     }
 
     func test_twoTriples_enabled_by_default() {
-        // Default rules: two triples = 2,500
+        // Default rules: two triplets = 2,500
         XCTAssertEqual(engine.score(dice: [2,2,2,3,3,3]).total, 2500)
     }
 
@@ -63,7 +75,8 @@ final class ScoringTests: XCTestCase {
     }
 
     func test_mixed_threeOnes_andSingleFive() {
-        XCTAssertEqual(engine.score(dice: [1,1,1,5]).total, 1050)
+        // 3 × 1s = 300 (uniform), + single 5 = 50 → 350
+        XCTAssertEqual(engine.score(dice: [1,1,1,5]).total, 350)
     }
 
     func test_emptyReturnsZero() {

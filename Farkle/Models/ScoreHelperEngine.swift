@@ -37,25 +37,35 @@ struct ScoreHelperEngine {
                                       total: 1500, usesAllDice: true, leftover: [])
             }
             if rules.twoTriples, (1...6).filter({ counts[$0] == 3 }).count == 2 {
-                return ScoreBreakdown(combos: [ScoreCombo(label: "Two triples", points: 2500)],
+                return ScoreBreakdown(combos: [ScoreCombo(label: "Two triplets", points: 2500)],
                                       total: 2500, usesAllDice: true, leftover: [])
+            }
+            if rules.fourOfAKindWithPair,
+               (1...6).contains(where: { counts[$0] == 4 }),
+               (1...6).contains(where: { counts[$0] == 2 }) {
+                return ScoreBreakdown(combos: [ScoreCombo(label: "4 of a kind w/ pair", points: 1500)],
+                                      total: 1500, usesAllDice: true, leftover: [])
             }
         }
 
         for face in (1...6).reversed() {
             let n = remaining[face]
             guard n >= 3 else { continue }
-            let base = face == 1 ? 1000 : face * 100
-            // Standard Farkle: four of a kind = 2×, five = 3×, six = 4× (the three-of-a-kind value).
-            let multiplier: Int
+            // House rule (per user's cheat sheet):
+            //   three 1s   = 300
+            //   three N>=2 = N × 100
+            //   four / five / six of a kind = fixed 1000 / 2000 / 3000 (any face)
+            let points: Int
             let label: String
             switch n {
-            case 6: multiplier = 4; label = "Six \(face)s"
-            case 5: multiplier = 3; label = "Five \(face)s"
-            case 4: multiplier = 2; label = "Four \(face)s"
-            default: multiplier = 1; label = "Three \(face)s"
+            case 6: points = 3000; label = "Six \(face)s"
+            case 5: points = 2000; label = "Five \(face)s"
+            case 4: points = 1000; label = "Four \(face)s"
+            default:
+                points = (face == 1) ? 300 : (face * 100)
+                label = "Three \(face)s"
             }
-            combos.append(ScoreCombo(label: label, points: base * multiplier))
+            combos.append(ScoreCombo(label: label, points: points))
             remaining[face] = 0
         }
 

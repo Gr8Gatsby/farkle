@@ -2,19 +2,21 @@ import SwiftUI
 
 struct RulesView: View {
     private let rows: [(name: String, dice: [Int], pts: String)] = [
-        ("Single 1", [1], "100"),
         ("Single 5", [5], "50"),
-        ("Three 1s", [1,1,1], "1,000"),
+        ("Single 1", [1], "100"),
+        ("Three 1s", [1,1,1], "300"),
         ("Three 2s", [2,2,2], "200"),
         ("Three 3s", [3,3,3], "300"),
         ("Three 4s", [4,4,4], "400"),
         ("Three 5s", [5,5,5], "500"),
         ("Three 6s", [6,6,6], "600"),
-        ("Four of a kind", [4,4,4,4], "2×"),
-        ("Five of a kind", [3,3,3,3,3], "3×"),
-        ("Six of a kind", [6,6,6,6,6,6], "4×"),
+        ("Four of a kind", [4,4,4,4], "1,000"),
+        ("Five of a kind", [5,5,5,5,5], "2,000"),
+        ("Six of a kind", [6,6,6,6,6,6], "3,000"),
         ("Straight 1–6", [1,2,3,4,5,6], "1,500"),
-        ("Three pairs", [2,2,4,4,6,6], "1,500")
+        ("Three pairs", [2,2,4,4,6,6], "1,500"),
+        ("Two triplets", [3,3,3,5,5,5], "2,500"),
+        ("4 of a kind w/ pair", [4,4,4,4,6,6], "1,500")
     ]
 
     var body: some View {
