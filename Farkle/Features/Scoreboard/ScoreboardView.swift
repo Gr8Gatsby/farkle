@@ -11,6 +11,7 @@ struct ScoreboardView: View {
     @State private var flavorQueue: [FlavorMessage] = []
     @State private var currentFlavor: FlavorMessage?
     @State private var liveFeed: [ActionSnapshot] = []
+    @State private var identity: JoinerIdentity?
 
     private var snapshot: GameSnapshot? { session.latestSnapshot }
 
@@ -29,6 +30,15 @@ struct ScoreboardView: View {
                 ProgressView()
                     .controlSize(.large)
                     .tint(Color.paper)
+            }
+
+            if identity == nil, let snap = snapshot, snap.endedAt == nil {
+                IdentityPickerOverlay(snapshot: snap) { choice in
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        identity = choice
+                    }
+                }
+                .transition(.opacity)
             }
 
             if session.joinState == .hostEnded {
@@ -72,6 +82,7 @@ struct ScoreboardView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     if snap.isInFinalRound { finalRoundBanner(snap: snap) }
+                    yourTurnBanner(snap: snap)
                     playersGrid(snap: snap)
                     pendingTurnIndicator(snap: snap)
                     feedSection
@@ -118,6 +129,36 @@ struct ScoreboardView: View {
         .padding(.bottom, 8)
     }
 
+    @ViewBuilder
+    private func yourTurnBanner(snap: GameSnapshot) -> some View {
+        if case .player(let myID) = identity, myID == snap.activePlayerID {
+            HStack(spacing: 12) {
+                Image(systemName: "hand.point.up.left.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.walnut)
+                    .frame(width: 36, height: 36)
+                    .background(Color.paper)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("IT'S YOUR TURN")
+                        .font(.mono(10, weight: .bold))
+                        .tracking(1.6)
+                        .foregroundStyle(Color.walnut)
+                    Text("Roll, then tell the scorekeeper what you got.")
+                        .font(.ui(12))
+                        .foregroundStyle(Color.walnut.opacity(0.85))
+                }
+                Spacer()
+            }
+            .padding(12)
+            .background(LinearGradient(colors: [Color.gold, Color.gold2],
+                                       startPoint: .leading, endPoint: .trailing))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: Color.gold.opacity(0.4), radius: 10)
+            .transition(.scale.combined(with: .opacity))
+        }
+    }
+
     private func finalRoundBanner(snap: GameSnapshot) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "flag.checkered")
@@ -160,14 +201,25 @@ struct ScoreboardView: View {
 
     private func playerCard(player: PlayerSnapshot, snap: GameSnapshot) -> some View {
         let isActive = player.id == snap.activePlayerID
+        let isMe = identity == .player(player.id)
         let pending = isActive ? snap.pendingTurnScore : 0
         return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 AvatarView(name: player.name, colorIndex: player.avatarIndex, size: 30, active: isActive)
                 Text(player.name)
                     .font(.ui(13, weight: .semibold))
                     .foregroundStyle(Color.paper)
-                Spacer()
+                if isMe {
+                    Text("YOU")
+                        .font(.mono(8, weight: .bold))
+                        .tracking(0.6)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.paper)
+                        .foregroundStyle(Color.felt)
+                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                }
+                Spacer(minLength: 4)
                 if isActive {
                     Text("ROLLING")
                         .font(.mono(8, weight: .bold))
@@ -202,12 +254,18 @@ struct ScoreboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isActive ? Color.gold.opacity(0.85) : Color.paper.opacity(0.06),
-                        lineWidth: isActive ? 1.5 : 0.5)
+                .stroke(borderColor(isActive: isActive, isMe: isMe),
+                        lineWidth: (isActive || isMe) ? 1.5 : 0.5)
         )
         .shadow(color: isActive ? Color.gold.opacity(0.4) : .clear, radius: isActive ? 12 : 0)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isActive)
         .animation(.easeInOut(duration: 0.25), value: pending)
+    }
+
+    private func borderColor(isActive: Bool, isMe: Bool) -> Color {
+        if isActive { return Color.gold.opacity(0.85) }
+        if isMe { return Color.paper.opacity(0.55) }
+        return Color.paper.opacity(0.06)
     }
 
     @ViewBuilder

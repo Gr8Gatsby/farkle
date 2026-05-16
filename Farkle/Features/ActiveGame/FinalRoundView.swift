@@ -509,26 +509,29 @@ struct FinalRoundView: View {
             showInvite = true
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: session.role == .host && session.connectedPeerCount > 0
-                      ? "dot.radiowaves.left.and.right"
-                      : "person.2.fill")
+                Image(systemName: "dot.radiowaves.left.and.right")
                     .font(.system(size: 11, weight: .semibold))
-                if session.role == .host {
-                    Text("\(session.connectedPeerCount)")
-                        .font(.mono(11, weight: .bold))
+                if !session.roomCode.isEmpty {
+                    Text(session.roomCode)
+                        .font(.mono(13, weight: .bold))
+                        .tracking(1)
+                }
+                if session.connectedPeerCount > 0 {
+                    Text("·").font(.ui(11, weight: .semibold)).opacity(0.6)
+                    Image(systemName: "person.fill").font(.system(size: 10, weight: .semibold))
+                    Text("\(session.connectedPeerCount)").font(.mono(12, weight: .bold))
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 12)
             .frame(height: 36)
-            .background(session.role == .host && session.connectedPeerCount > 0
+            .background(session.connectedPeerCount > 0
                         ? Color.gold.opacity(0.85)
                         : Color.white.opacity(0.10))
-            .foregroundStyle(session.role == .host && session.connectedPeerCount > 0
-                             ? Color.walnut
-                             : Color.paper)
+            .foregroundStyle(session.connectedPeerCount > 0 ? Color.walnut : Color.paper)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Room code \(session.roomCode). \(session.connectedPeerCount) viewers.")
     }
 
     private var canBank: Bool {

@@ -146,6 +146,10 @@ struct ActiveGameView: View {
                 Text("Your game is saved. You can resume it from Home.")
             }
             .hostBroadcaster(game: game, session: netSession)
+            .onAppear { startHostingIfNeeded() }
+            .onDisappear {
+                if game.endedAt != nil { netSession.stopHosting() }
+            }
         }
     }
 
@@ -280,31 +284,38 @@ struct ActiveGameView: View {
     @ViewBuilder
     private func inviteButton(dark: Bool) -> some View {
         Button {
-            startHostingIfNeeded()
             showInvite = true
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: netSession.role == .host && netSession.connectedPeerCount > 0
-                      ? "dot.radiowaves.left.and.right"
-                      : "person.2.fill")
+                Image(systemName: "dot.radiowaves.left.and.right")
                     .font(.system(size: 11, weight: .semibold))
-                if netSession.role == .host {
+                if !netSession.roomCode.isEmpty {
+                    Text(netSession.roomCode)
+                        .font(.mono(13, weight: .bold))
+                        .tracking(1)
+                }
+                if netSession.connectedPeerCount > 0 {
+                    Text("·")
+                        .font(.ui(11, weight: .semibold))
+                        .opacity(0.6)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 10, weight: .semibold))
                     Text("\(netSession.connectedPeerCount)")
-                        .font(.mono(11, weight: .bold))
+                        .font(.mono(12, weight: .bold))
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 12)
             .frame(height: 36)
-            .background(netSession.role == .host && netSession.connectedPeerCount > 0
+            .background(netSession.connectedPeerCount > 0
                         ? Color.felt.opacity(0.85)
                         : (dark ? Color.white.opacity(0.10) : Color.walnut.opacity(0.08)))
-            .foregroundStyle(netSession.role == .host && netSession.connectedPeerCount > 0
+            .foregroundStyle(netSession.connectedPeerCount > 0
                              ? Color.paper
                              : (dark ? Color.paper : Color.ink))
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Invite viewers")
+        .accessibilityLabel("Room code \(netSession.roomCode). \(netSession.connectedPeerCount) viewers.")
     }
 
     private func startHostingIfNeeded() {

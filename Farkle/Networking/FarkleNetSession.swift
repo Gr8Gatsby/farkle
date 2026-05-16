@@ -167,6 +167,12 @@ extension FarkleNetSession: MCSessionDelegate {
             self.connectedPeerCount = session.connectedPeers.count
             switch state {
             case .connected:
+                if self.role == .host, let snap = self.latestSnapshot {
+                    // Catch the new peer up with the current state.
+                    if let data = try? JSONEncoder().encode(snap) {
+                        try? session.send(data, toPeers: [peerID], with: .reliable)
+                    }
+                }
                 if self.role == .joiner { self.joinState = .connected }
             case .notConnected:
                 if self.role == .joiner, self.joinState == .connected {
