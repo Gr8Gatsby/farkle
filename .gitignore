@@ -1,0 +1,25 @@
+## macOS
+.DS_Store
+
+## Generated Xcode project (regenerated via `xcodegen generate`)
+Farkle.xcodeproj/
+
+## Xcode user data
+*.xcuserstate
+xcuserdata/
+*.xcuserdatad/
+DerivedData/
+build/
+
+## Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+## CocoaPods / Carthage (unused but reserved)
+Pods/
+Carthage/Build/
+
+## misc
+*.log
+*.tmp
