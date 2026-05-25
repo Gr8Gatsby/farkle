@@ -13,11 +13,9 @@ struct FinalRoundView: View {
     @State private var showBankConfirm = false
     @State private var showBustConfirm = false
     @State private var showScoreHelper = false
-    @State private var showKeypad = false
     @State private var showExitConfirm = false
     @State private var showInvite = false
     @State private var markHotDice = false
-    @State private var actionBeingEdited: ActionLogEntry?
 
     private var engine: GameEngine { GameEngine(game: game, context: context) }
 
@@ -42,16 +40,20 @@ struct FinalRoundView: View {
                     VStack(spacing: 14) {
                         hero
                         currentPlayerCard
-                        pendingTurnPanel
                         remainingPanel
-                        if !recentActions.isEmpty { recentSection }
                         Color.clear.frame(height: 8)
                     }
                     .padding(.horizontal, 14)
                     .padding(.top, 8)
                 }
                 .scrollIndicators(.hidden)
+
+                pendingTurnPanel
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+
                 bottomBar
+                scoreHelperLink
             }
         }
         .sheet(isPresented: $showBankConfirm) {
@@ -93,37 +95,6 @@ struct FinalRoundView: View {
                 onCancel: { showScoreHelper = false }
             )
             .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(Color.paper)
-        }
-        .sheet(isPresented: $showKeypad) {
-            KeypadSheet(
-                initial: 0,
-                onAdd: { value in
-                    engine.addToPending(value)
-                    showKeypad = false
-                },
-                onCancel: { showKeypad = false }
-            )
-            .presentationDetents([.fraction(0.55)])
-            .presentationBackground(Color.paper)
-        }
-        .sheet(item: $actionBeingEdited) { entry in
-            EditActionSheet(
-                game: game,
-                action: entry,
-                onSave: { newAmount in
-                    engine.setActionAmount(actionID: entry.id, newAmount: newAmount)
-                    actionBeingEdited = nil
-                },
-                onUndo: {
-                    engine.undo(actionID: entry.id)
-                    actionBeingEdited = nil
-                },
-                onCancel: { actionBeingEdited = nil },
-                session: session
-            )
-            .presentationDetents([.fraction(0.7)])
             .presentationDragIndicator(.visible)
             .presentationBackground(Color.paper)
         }
@@ -206,16 +177,28 @@ struct FinalRoundView: View {
                 .font(.ui(11, weight: .bold))
                 .tracking(2.4)
                 .foregroundStyle(Color.gold)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Beat")
-                    .font(.display(28))
-                    .foregroundStyle(Color.paper)
-                Text(scoreToBeat.formatted())
-                    .font(.display(40, italic: true))
-                    .foregroundStyle(Color.gold2)
+            if let player = game.activePlayer {
+                let needs = scoreToBeat - player.bankedScore + 50
+                if needs > 0 {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(player.name) needs")
+                            .font(.display(22))
+                            .foregroundStyle(Color.paper)
+                        Text(needs.formatted())
+                            .font(.display(36, italic: true))
+                            .foregroundStyle(Color.gold2)
+                        Text("to win")
+                            .font(.display(22))
+                            .foregroundStyle(Color.paper)
+                    }
+                } else {
+                    Text("Banking wins!")
+                        .font(.display(28))
+                        .foregroundStyle(Color.gold)
+                }
             }
             if let trigger {
-                Text("\(trigger.name) set the bar.")
+                Text("\(trigger.name) set the bar at \(scoreToBeat.formatted()).")
                     .font(.ui(12))
                     .foregroundStyle(Color.paper.opacity(0.7))
             }
@@ -231,6 +214,7 @@ struct FinalRoundView: View {
         if let player = game.activePlayer {
             let pending = game.pendingTurnScore
             let projected = player.bankedScore + pending
+            let needs = scoreToBeat - player.bankedScore + 50
 
             HStack(spacing: 12) {
                 AvatarView(name: player.name,
@@ -239,16 +223,18 @@ struct FinalRoundView: View {
                            active: true,
                            photoData: session.photoData(for: player.id))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("ROLLING NOW")
-                        .font(.ui(10, weight: .bold))
-                        .tracking(1.4)
-                        .foregroundStyle(Color.gold)
                     Text(player.name)
                         .font(.display(28, italic: true))
                         .foregroundStyle(Color.paper)
-                    Text("at \(player.bankedScore.formatted()) — beat \(scoreToBeat.formatted()) to win")
-                        .font(.ui(12))
-                        .foregroundStyle(Color.paper.opacity(0.75))
+                    if projected > scoreToBeat && pending > 0 {
+                        Text("banking this wins!")
+                            .font(.ui(13, weight: .bold))
+                            .foregroundStyle(Color.gold)
+                    } else {
+                        Text("needs \(needs.formatted()) to win")
+                            .font(.ui(12))
+                            .foregroundStyle(Color.paper.opacity(0.75))
+                    }
                 }
                 Spacer()
                 if projected > scoreToBeat && pending > 0 {
@@ -279,8 +265,6 @@ struct FinalRoundView: View {
             game: game,
             onQuickAdd: { engine.addToPending($0) },
             onClear: { engine.clearPending() },
-            onOpenHelper: { showScoreHelper = true },
-            onOpenKeypad: { showKeypad = true },
             onFarkle: { showBustConfirm = true }
         )
     }
@@ -340,7 +324,8 @@ struct FinalRoundView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
                     }
                 }
-                Text("at \(player.bankedScore.formatted()) · beat \(scoreToBeat.formatted())")
+                let needs = scoreToBeat - player.bankedScore + 50
+                Text("needs \(needs.formatted()) to win")
                     .font(.ui(10))
                     .foregroundStyle(Color.paper.opacity(0.65))
             }
@@ -348,95 +333,6 @@ struct FinalRoundView: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 6)
-    }
-
-    // MARK: recent (final-round only)
-
-    private var recentActions: [ActionLogEntry] {
-        guard let trigger = game.finalRoundTriggeredByPlayerID else { return [] }
-        // Show the triggering bank + everything after it.
-        let ordered = game.orderedActions
-        guard let triggerIdx = ordered.firstIndex(where: {
-            $0.kind == .bank && $0.playerID == trigger
-        }) else { return [] }
-        return Array(ordered[triggerIdx...].reversed())
-    }
-
-    private var recentSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("FINAL ROUND TURNS")
-                    .font(.ui(10, weight: .bold))
-                    .tracking(1.6)
-                    .foregroundStyle(Color.paper.opacity(0.55))
-                Spacer()
-                Text("Tap to edit / undo")
-                    .font(.ui(10, weight: .semibold))
-                    .tracking(1.2)
-                    .foregroundStyle(Color.paper.opacity(0.45))
-            }
-            .padding(.horizontal, 4)
-
-            VStack(spacing: 4) {
-                ForEach(recentActions.prefix(5), id: \.id) { entry in
-                    actionRow(entry: entry)
-                }
-            }
-        }
-    }
-
-    private func actionRow(entry: ActionLogEntry) -> some View {
-        let player = game.players.first(where: { $0.id == entry.playerID })
-        return Button {
-            actionBeingEdited = entry
-        } label: {
-            HStack(spacing: 10) {
-                AvatarView(name: player?.name ?? "?",
-                           colorIndex: player?.avatarIndex ?? 0,
-                           size: 20,
-                           photoData: player.flatMap { session.photoData(for: $0.id) })
-                HStack(spacing: 4) {
-                    Text(player?.name ?? "—")
-                        .font(.ui(12, weight: .semibold))
-                        .foregroundStyle(Color.paper)
-                    Group {
-                        switch entry.kind {
-                        case .bank:
-                            HStack(spacing: 4) {
-                                Text("banked")
-                                Text("+\(entry.amount.formatted())")
-                                    .font(.mono(12, weight: .bold))
-                                    .foregroundStyle(Color.gold2)
-                            }
-                        case .bust:
-                            HStack(spacing: 4) {
-                                Text("busted")
-                                Text("(Farkle)").foregroundStyle(Color.crimson)
-                            }
-                        case .startFinalRound:
-                            Text("triggered final round").foregroundStyle(Color.gold)
-                        case .endGame:
-                            Text("won the game").foregroundStyle(Color.gold)
-                        }
-                    }
-                    .font(.ui(12))
-                    .foregroundStyle(Color.paper.opacity(0.8))
-                }
-                Spacer()
-                Image(systemName: "pencil")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.paper.opacity(0.5))
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.black.opacity(0.22))
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.paper.opacity(0.06), lineWidth: 0.5)
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: bottom bar
@@ -455,6 +351,8 @@ struct FinalRoundView: View {
                         let newTotal = player.bankedScore + game.pendingTurnScore
                         Text("+\(game.pendingTurnScore) → \(newTotal.formatted())")
                             .font(.display(20, italic: true))
+                            .contentTransition(.numericText(value: Double(game.pendingTurnScore)))
+                            .animation(.easeOut(duration: 0.35), value: game.pendingTurnScore)
                         Text(hint(newTotal: newTotal))
                             .font(.ui(10, weight: .bold))
                             .tracking(0.6)
@@ -481,7 +379,22 @@ struct FinalRoundView: View {
         .opacity(canBank ? 1 : 0.55)
         .padding(.horizontal, 14)
         .padding(.top, 12)
-        .padding(.bottom, 28)
+        .padding(.bottom, 8)
+    }
+
+    private var scoreHelperLink: some View {
+        Button {
+            showScoreHelper = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "die.face.5")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Score helper")
+                    .font(.ui(13, weight: .semibold))
+            }
+            .foregroundStyle(Color.paper.opacity(0.7))
+        }
+        .padding(.bottom, 20)
     }
 
     private var inviteButton: some View {
