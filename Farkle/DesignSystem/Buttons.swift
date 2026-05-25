@@ -52,13 +52,14 @@ struct ChipButtonStyle: ButtonStyle {
     var accent: Bool = false
     var size: CGFloat = 48
     var fontSize: CGFloat = 16
+    var fullWidth: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.mono(fontSize, weight: .semibold))
             .foregroundStyle(accent ? Color.walnutInk : Color.ink)
             .padding(.horizontal, 14)
-            .frame(minWidth: 64)
+            .frame(minWidth: fullWidth ? nil : 64, maxWidth: fullWidth ? .infinity : nil)
             .frame(height: size)
             .background(
                 Group {

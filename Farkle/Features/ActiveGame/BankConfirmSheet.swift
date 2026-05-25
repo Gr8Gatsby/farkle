@@ -7,6 +7,11 @@ struct BankConfirmSheet: View {
     var onCancel: () -> Void
     var session: FarkleNetSession? = nil
 
+    private let autoBankDuration: Double = 5
+
+    @State private var secondsLeft = 5
+    @State private var progress: CGFloat = 1
+
     var body: some View {
         guard let player = game.activePlayer else {
             return AnyView(EmptyView())
@@ -17,6 +22,8 @@ struct BankConfirmSheet: View {
         let willEndGame = game.isInFinalRound && game.finalRoundTurnsRemaining == 1
         let willWinNow = willEndGame && now > (game.scoreToBeat ?? game.targetScore)
         let nextPlayerName = nextPlayer()?.name
+
+        let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
         return AnyView(
             VStack(spacing: 0) {
@@ -44,17 +51,19 @@ struct BankConfirmSheet: View {
                     .padding(.top, 12)
 
                 HStack(spacing: 8) {
-                    Button("Keep rolling") { onCancel() }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.clear)
-                        .foregroundStyle(Color.ink)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
-                        )
-                        .font(.ui(14, weight: .semibold))
+                    Button("Keep rolling") {
+                        onCancel()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.clear)
+                    .foregroundStyle(Color.ink)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
+                    )
+                    .font(.ui(14, weight: .semibold))
 
                     Button {
                         onConfirm()
@@ -65,10 +74,39 @@ struct BankConfirmSheet: View {
                                       nextPlayerName: nextPlayerName))
                     }
                     .buttonStyle(WalnutButtonStyle(size: .regular, fullWidth: true))
+                    .overlay(alignment: .bottom) {
+                        GeometryReader { proxy in
+                            Capsule()
+                                .fill(Color.walnutInk.opacity(0.25))
+                                .frame(width: proxy.size.width * progress, height: 3)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(height: 3)
+                        .clipShape(Capsule())
+                        .padding(.horizontal, 4)
+                        .offset(y: -6)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
                 .padding(.bottom, 20)
+
+                Text("Auto-banking in \(secondsLeft)s")
+                    .font(.mono(10))
+                    .foregroundStyle(Color.ink3)
+                    .padding(.bottom, 12)
+            }
+            .onAppear {
+                withAnimation(.linear(duration: autoBankDuration)) {
+                    progress = 0
+                }
+            }
+            .onReceive(timer) { _ in
+                if secondsLeft > 1 {
+                    secondsLeft -= 1
+                } else {
+                    onConfirm()
+                }
             }
         )
     }
