@@ -91,3 +91,14 @@ and structure only.
   - Removed the now-dead NumberKeypad + EditActionSheet (recent-actions editing was dropped
     from the score-keeper, matching iOS).
   - Verified each redesigned screen on the Pixel 7 (API 35) emulator via seeded game states.
+- 2026-06-03 — **Two-emulator live-join test.** Ran a host on one AVD and a joiner on a
+  second AVD. Findings: NSD/mDNS discovery *does* cross between emulators (the joiner found
+  `Farkle-<code>` and listed the room), but the WebSocket connect failed with `ECONNREFUSED`
+  because the host advertises its own guest IP (`10.0.2.x`), which is not routable across the
+  emulators' isolated user-mode NATs — an emulator-only limitation, not an app bug (on real
+  devices on one Wi-Fi the advertised address is a real LAN IP). To exercise the live path
+  anyway, bridged the two guests (`adb forward` the host WebSocket to the PC + an `iptables`
+  OUTPUT DNAT on the joiner redirecting the host IP to `10.0.2.2`). With the bridge, the full
+  experience works: discovery → connect → read-only mirror, the host's banks stream to the
+  joiner live (standings re-rank, active-player highlight, LIVE FEED), the host shows the
+  viewer count, and seat-pick shows the YOU badge. All glyphs render (no tofu).
