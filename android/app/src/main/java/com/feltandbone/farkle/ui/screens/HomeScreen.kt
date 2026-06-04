@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -135,12 +139,16 @@ private fun RecentRow(game: Game, onClick: () -> Unit) {
         }
         Column(horizontalAlignment = Alignment.End) {
             val w = game.winner
-            Text(
-                "🏆 ${w?.let { firstName(it.name) } ?: "—"}",
-                color = Ink,
-                fontFamily = PlexSans,
-                fontWeight = FontWeight.Medium,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.EmojiEvents, null, tint = Gold, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    w?.let { firstName(it.name) } ?: "—",
+                    color = Ink,
+                    fontFamily = PlexSans,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
             Caption("${(w?.bankedScore ?: 0).grouped()}", color = Ink2)
         }
     }

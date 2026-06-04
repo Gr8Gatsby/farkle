@@ -29,7 +29,6 @@ import com.feltandbone.farkle.ui.theme.Ink2
 import com.feltandbone.farkle.ui.theme.Ink3
 import com.feltandbone.farkle.ui.theme.InstrumentSerif
 import com.feltandbone.farkle.ui.theme.JetBrainsMono
-import com.feltandbone.farkle.ui.theme.Paper2
 import com.feltandbone.farkle.ui.theme.PaperSurface
 import com.feltandbone.farkle.ui.theme.PlexSans
 import com.feltandbone.farkle.ui.theme.Walnut
@@ -108,7 +107,7 @@ fun SecondaryButton(
     }
 }
 
-/** Quick-add value chip. */
+/** Quick-add value chip — mono number on paper surface with a hairline walnut border. Parity with iOS ChipButtonStyle. */
 @Composable
 fun ValueChip(
     label: String,
@@ -117,23 +116,25 @@ fun ValueChip(
     crimsonStyle: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(11.dp)
     val bg = when {
         crimsonStyle -> Crimson
         selected -> Walnut
-        else -> Paper2
+        else -> PaperSurface
     }
     val fg = if (crimsonStyle || selected) WalnutInk else Ink
+    val accent = crimsonStyle || selected
     Box(
         modifier = modifier
             .clip(shape)
             .background(bg)
+            .then(if (accent) Modifier else Modifier.border(BorderStroke(1.dp, Walnut.copy(alpha = 0.20f)), shape))
             .clickable { onClick() }
             .heightIn(min = 48.dp)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = fg, fontFamily = PlexSans, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Text(label, color = fg, fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
     }
 }
 

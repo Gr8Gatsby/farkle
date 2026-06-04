@@ -1,8 +1,7 @@
 package com.feltandbone.farkle.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,16 +9,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +25,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,250 +35,194 @@ import androidx.compose.ui.unit.sp
 import com.feltandbone.farkle.model.Game
 import com.feltandbone.farkle.ui.AppViewModel
 import com.feltandbone.farkle.ui.components.Avatar
-import com.feltandbone.farkle.ui.components.PrimaryButton
-import com.feltandbone.farkle.ui.components.SecondaryButton
-import com.feltandbone.farkle.ui.components.ValueChip
-import com.feltandbone.farkle.ui.components.firstName
 import com.feltandbone.farkle.ui.components.grouped
 import com.feltandbone.farkle.ui.theme.Bone
-import com.feltandbone.farkle.ui.theme.Crimson
 import com.feltandbone.farkle.ui.theme.Felt
-import com.feltandbone.farkle.ui.theme.FeltDeep
 import com.feltandbone.farkle.ui.theme.Gold
-import com.feltandbone.farkle.ui.theme.Ink
+import com.feltandbone.farkle.ui.theme.Gold2
+import com.feltandbone.farkle.ui.theme.Paper
+import com.feltandbone.farkle.ui.theme.PlexSans
 import com.feltandbone.farkle.ui.theme.InstrumentSerif
 import com.feltandbone.farkle.ui.theme.JetBrainsMono
-import com.feltandbone.farkle.ui.theme.PlexSans
 import com.feltandbone.farkle.ui.theme.Walnut
-import com.feltandbone.farkle.ui.theme.WalnutInk
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FinalRoundScreen(vm: AppViewModel) {
     val game = vm.activeGame ?: return
     var sheet by remember { mutableStateOf<ActiveSheet?>(null) }
+    var confirmLeave by remember { mutableStateOf(false) }
 
-    if (!game.finalRoundAnnouncementShown) {
-        FinalRoundAnnouncement(game) { vm.markFinalRoundAnnouncementShown() }
-        return
+    // The final-round screen IS the announcement now; mark it acknowledged.
+    LaunchedEffect(game.id) {
+        if (!game.finalRoundAnnouncementShown) vm.markFinalRoundAnnouncementShown()
     }
 
     val active = game.activePlayer
     val scoreToBeat = game.scoreToBeat ?: game.targetScore
     val pending = game.pendingTurnScore
-    val newTotal = (active?.bankedScore ?: 0) + pending
-    val wins = newTotal > scoreToBeat
-    val stillToRoll = game.remainingFinalRoundPlayers.filter { it.id != active?.id }
-    val triggerName = game.player(game.finalRoundTriggeredByPlayerId)?.name ?: ""
+    val trigger = game.player(game.finalRoundTriggeredByPlayerId)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FeltDeep)
-            .statusBarsPadding(),
-    ) {
-        Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("FINAL ROUND", color = Gold, fontFamily = JetBrainsMono, letterSpacing = 4.sp, fontSize = 13.sp)
-            Spacer(Modifier.height(6.dp))
-            Text("Score to beat", color = Bone.copy(alpha = 0.7f), fontFamily = PlexSans, fontSize = 13.sp)
-            Text(
-                scoreToBeat.grouped(),
-                color = Bone,
-                fontFamily = JetBrainsMono,
-                fontWeight = FontWeight.Bold,
-                fontSize = 48.sp,
-            )
-            Text(
-                "${firstName(triggerName)} set the bar",
-                color = Bone.copy(alpha = 0.7f),
-                fontFamily = PlexSans,
-                fontSize = 13.sp,
+    Box(Modifier.fillMaxSize().background(Felt)) {
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent, Color.Black.copy(alpha = 0.25f))),
+            ),
+        )
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            TopBar(
+                centerLabel = "FINAL ROUND · ${game.remainingFinalRoundPlayers.size} LEFT",
+                roomCode = vm.roomCode,
+                viewerCount = vm.viewerCount,
+                undoEnabled = game.actions.isNotEmpty(),
+                dark = true,
+                centerColor = Gold,
+                onBack = { confirmLeave = true },
+                onUndo = { vm.undoLast() },
             )
 
-            Spacer(Modifier.height(20.dp))
-            if (active != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Felt)
-                        .padding(18.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Avatar(active, size = 56.dp, highlighted = true)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        active.name,
-                        color = Bone,
-                        fontFamily = InstrumentSerif,
-                        fontStyle = FontStyle.Italic,
-                        fontSize = 28.sp,
-                    )
-                    val needToWin = (scoreToBeat - active.bankedScore + 1).coerceAtLeast(1)
-                    Text(
-                        if (newTotal > scoreToBeat) "Currently WINNING" else "Needs ${needToWin.grouped()} this turn to win",
-                        color = Gold,
-                        fontFamily = PlexSans,
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        "Turn: +${pending.grouped()}  →  ${newTotal.grouped()}",
-                        color = Bone,
-                        fontFamily = JetBrainsMono,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    val chips = listOf(50, 100, 150, 300, 500, 1000)
-                    Column {
-                        chips.chunked(3).forEach { row ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                row.forEach { v -> ValueChip(v.grouped(), modifier = Modifier.weight(1f)) { vm.addToPending(v) } }
+            Column(
+                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp).padding(top = 8.dp),
+            ) {
+                // Hero
+                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("FINAL ROUND", color = Gold, fontFamily = PlexSans, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.4.sp)
+                    Spacer(Modifier.height(6.dp))
+                    if (active != null) {
+                        val needs = scoreToBeat - active.bankedScore + 50
+                        if (needs > 0) {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text("${active.name} needs ", color = Paper, fontFamily = InstrumentSerif, fontSize = 22.sp)
+                                Text(needs.grouped(), color = Gold2, fontFamily = InstrumentSerif, fontStyle = FontStyle.Italic, fontSize = 36.sp)
+                                Text(" to win", color = Paper, fontFamily = InstrumentSerif, fontSize = 22.sp)
                             }
-                            Spacer(Modifier.height(8.dp))
+                        } else {
+                            Text("Banking wins!", color = Gold, fontFamily = InstrumentSerif, fontSize = 28.sp)
                         }
                     }
-                    Row {
-                        SecondaryButton("+ Custom", modifier = Modifier.weight(1f), color = Walnut) { sheet = ActiveSheet.Keypad }
-                        Spacer(Modifier.width(8.dp))
-                        SecondaryButton("Helper", modifier = Modifier.weight(1f), color = Felt) { sheet = ActiveSheet.Helper }
+                    if (trigger != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Text("${trigger.name} set the bar at ${scoreToBeat.grouped()}.", color = Paper.copy(alpha = 0.7f), fontFamily = PlexSans, fontSize = 12.sp)
                     }
                 }
-            }
+                Spacer(Modifier.height(14.dp))
 
-            if (stillToRoll.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
-                Text("Still to roll", color = Bone.copy(alpha = 0.7f), fontFamily = JetBrainsMono, fontSize = 12.sp, letterSpacing = 2.sp)
-                Spacer(Modifier.height(8.dp))
-                stillToRoll.forEach { p ->
+                // Current player card
+                if (active != null) {
+                    val projected = active.bankedScore + pending
+                    val needs = scoreToBeat - active.bankedScore + 50
+                    val banksWin = projected > scoreToBeat && pending > 0
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Felt.copy(alpha = 0.5f))
-                            .padding(10.dp),
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color.Black.copy(alpha = 0.28f))
+                            .border(androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.45f)), RoundedCornerShape(18.dp))
+                            .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Avatar(p, size = 30.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Text(p.name, color = Bone, fontFamily = PlexSans, modifier = Modifier.weight(1f))
-                        val need = (scoreToBeat - p.bankedScore).coerceAtLeast(0)
-                        Text("beat ${scoreToBeat.grouped()}", color = Bone.copy(alpha = 0.7f), fontFamily = JetBrainsMono, fontSize = 12.sp)
+                        Avatar(active, size = 56.dp, highlighted = true)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(active.name, color = Paper, fontFamily = InstrumentSerif, fontStyle = FontStyle.Italic, fontSize = 28.sp)
+                            if (banksWin) {
+                                Text("banking this wins!", color = Gold, fontFamily = PlexSans, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            } else {
+                                Text("needs ${needs.grouped()} to win", color = Paper.copy(alpha = 0.75f), fontFamily = PlexSans, fontSize = 12.sp)
+                            }
+                        }
+                        if (banksWin) {
+                            Box(Modifier.clip(RoundedCornerShape(50)).background(Gold).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                Text("WIN", color = Walnut, fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.4.sp)
+                            }
+                        }
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(14.dp))
                 }
-            }
-        }
 
-        // Bottom Bank / Farkle
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(FeltDeep)
-                .padding(16.dp)
-                .navigationBarsPadding(),
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Crimson)
-                    .clickable { vm.bust() }
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("✕ FARKLE", color = WalnutInk, fontFamily = PlexSans, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.width(10.dp))
-            Box(
-                modifier = Modifier
-                    .weight(2f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (pending > 0) Gold else Felt)
-                    .clickable(enabled = pending > 0) { vm.bank() }
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                val label = when {
-                    pending <= 0 -> "Bank"
-                    wins -> "Bank — WINS! 🎉"
-                    else -> "Bank — SHORT BY ${(scoreToBeat - newTotal + 1).coerceAtLeast(1).grouped()}"
+                // Still to roll
+                val queue = game.remainingFinalRoundPlayers.filter { it.id != active?.id }
+                if (queue.isNotEmpty()) {
+                    Text("STILL TO ROLL", color = Paper.copy(alpha = 0.55f), fontFamily = PlexSans, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.6.sp, modifier = Modifier.padding(horizontal = 4.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.22f))
+                            .border(androidx.compose.foundation.BorderStroke(0.5.dp, Paper.copy(alpha = 0.06f)), RoundedCornerShape(14.dp)).padding(8.dp),
+                    ) {
+                        queue.forEachIndexed { idx, p ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(p, size = 24.dp, highlighted = idx == 0)
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(p.name, color = Paper, fontFamily = PlexSans, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        if (idx == 0) {
+                                            Spacer(Modifier.width(6.dp))
+                                            Box(Modifier.clip(RoundedCornerShape(3.dp)).background(Gold).padding(horizontal = 5.dp, vertical = 2.dp)) {
+                                                Text("UP NEXT", color = Walnut, fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 8.sp, letterSpacing = 0.6.sp)
+                                            }
+                                        }
+                                    }
+                                    val needs = scoreToBeat - p.bankedScore + 50
+                                    Text("needs ${needs.grouped()} to win", color = Paper.copy(alpha = 0.65f), fontFamily = PlexSans, fontSize = 10.sp)
+                                }
+                            }
+                            if (idx < queue.size - 1) Box(Modifier.fillMaxWidth().height(0.5.dp).background(Paper.copy(alpha = 0.08f)))
+                        }
+                    }
                 }
-                Text(label, color = Ink, fontFamily = PlexSans, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
             }
+
+            PendingTurnCard(
+                game = game,
+                onQuickAdd = { vm.addToPending(it) },
+                onClear = { vm.clearPending() },
+                onFarkle = { sheet = ActiveSheet.Farkle },
+                modifier = Modifier.padding(horizontal = 14.dp).padding(top = 8.dp),
+            )
+
+            ReviewAndBankBar(
+                label = "BANK",
+                enabled = pending > 0,
+                active = active,
+                pending = pending,
+                scoreToBeat = scoreToBeat,
+                mustOpen = null,
+                finalRoundHint = { newTotal, bar ->
+                    when {
+                        newTotal > bar -> "WINS!"
+                        newTotal == bar -> "TIE — TRIGGER WINS"
+                        else -> "SHORT BY ${(bar - newTotal).grouped()}"
+                    }
+                },
+            ) { sheet = ActiveSheet.BankConfirm }
+
+            ScoreHelperLink(color = Bone.copy(alpha = 0.85f)) { sheet = ActiveSheet.Helper }
         }
     }
 
     when (sheet) {
-        ActiveSheet.Keypad -> Sheet(onDismiss = { sheet = null }) {
-            NumberKeypad(title = "Add to turn", confirmLabel = "Add to turn") { vm.addToPending(it); sheet = null }
-        }
         ActiveSheet.Helper -> Sheet(onDismiss = { sheet = null }) {
             ScoreHelperSheet(rules = game.rules) { total, hot ->
                 vm.addToPending(total); if (hot) vm.markPendingHotDice(); sheet = null
             }
         }
+        ActiveSheet.BankConfirm -> Sheet(onDismiss = { sheet = null }) {
+            BankConfirmSheet(game, onCancel = { sheet = null }) { vm.bank(); sheet = null }
+        }
+        ActiveSheet.Farkle -> Sheet(onDismiss = { sheet = null }) {
+            FarkleConfirmSheet(game, onCancel = { sheet = null }) { vm.bust(); sheet = null }
+        }
         else -> Unit
     }
-}
 
-@Composable
-private fun FinalRoundAnnouncement(game: Game, onDismiss: () -> Unit) {
-    val trigger = game.player(game.finalRoundTriggeredByPlayerId)
-    val scoreToBeat = game.scoreToBeat ?: game.targetScore
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FeltDeep)
-            .statusBarsPadding()
-            .padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text("🎲", fontSize = 56.sp)
-        Spacer(Modifier.height(8.dp))
-        Text("FINAL ROUND", color = Gold, fontFamily = JetBrainsMono, letterSpacing = 5.sp, fontSize = 18.sp)
-        Spacer(Modifier.height(14.dp))
-        Text(
-            "${firstName(trigger?.name ?: "")} hit the target.",
-            color = Bone,
-            fontFamily = InstrumentSerif,
-            fontStyle = FontStyle.Italic,
-            fontSize = 34.sp,
-            textAlign = TextAlign.Center,
+    if (confirmLeave) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmLeave = false },
+            title = { Text("Leave this game?") },
+            text = { Text("Your game is saved — you can resume it from Home.") },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { confirmLeave = false; vm.leaveGame() }) { Text("Leave") } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { confirmLeave = false }) { Text("Keep playing") } },
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Everyone else gets one last turn. Beat ${scoreToBeat.grouped()} to win.",
-            color = Bone.copy(alpha = 0.85f),
-            fontFamily = PlexSans,
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(24.dp))
-        game.remainingFinalRoundPlayers.forEach { p ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Felt.copy(alpha = 0.5f))
-                    .padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Avatar(p, size = 30.dp)
-                Spacer(Modifier.width(10.dp))
-                Text(p.name, color = Bone, fontFamily = PlexSans, modifier = Modifier.weight(1f))
-                val need = (scoreToBeat - p.bankedScore).coerceAtLeast(0)
-                Text("needs ${need.grouped()}+", color = Gold, fontFamily = JetBrainsMono, fontSize = 12.sp)
-            }
-            Spacer(Modifier.height(6.dp))
-        }
-        Spacer(Modifier.height(24.dp))
-        PrimaryButton("Got it — let's play", color = Gold, foreground = Ink, onClick = onDismiss)
     }
 }

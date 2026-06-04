@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -121,7 +122,7 @@ fun GameOverScreen(vm: AppViewModel) {
                 Box(Modifier.size(170.dp).clip(CircleShape).background(Gold.copy(alpha = 0.18f)))
                 if (winner != null) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("🏆", fontSize = 64.sp)
+                        Icon(Icons.Filled.EmojiEvents, contentDescription = null, tint = Gold, modifier = Modifier.size(56.dp))
                         Avatar(winner, size = 72.dp, highlighted = true)
                     }
                 }

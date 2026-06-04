@@ -66,3 +66,28 @@ and structure only.
   engine ported with 32 passing unit tests; all screens built to parity; JSON persistence;
   WinCard share/save; live-scoreboard host (WebSocket + NSD) verified on-device; joiner +
   read-only scoreboard implemented.
+- 2026-06-03 — Re-ported the score-keeping UI to match the iOS "Redesign scoring UI"
+  revision (merged in from `feature/license`, which the original Android branch predated):
+  - **Unified standings** — folded the separate "Now Rolling" banner into the standings list;
+    the active row expands (walnut fill, dice glyph, large italic name, animated rank/score/bar).
+  - **PendingTurnCard** — 4-column quick-add grid `[50,100,200,300,350,500,1000,1500]`
+    (dropped +150, added +1,500), pending total at the bottom with an animated transition,
+    larger Farkle capsule; removed the +Custom button and number keypad.
+  - **REVIEW & BANK** bottom bar showing `+pending → newTotal` and a contextual final-round
+    hint; **Score helper** moved to a link below the bottom bar.
+  - **BankConfirmSheet** — composed title variants (win / end-game / trigger-final / normal),
+    was→now delta card with progress, and a 5-second auto-bank countdown with a progress capsule.
+  - **FinalRoundScreen** — the screen now *is* the announcement (marks it shown on appear);
+    needs-X-to-win hero (+50 increment), current-player card, shared PendingTurnCard,
+    STILL-TO-ROLL queue with UP NEXT badge.
+  - **Scoreboard joiner** — header with LIVE pulse, final-round banner with deterministic
+    "just roll X" combo suggestion, unified standings (active highlight, YOU badge, pending),
+    LIVE FEED rebuilt from the snapshot's action log, win celebration.
+  - **Broken graphics fix** — emoji rendered inside custom-font `Text` (📡 room chip, 👤, 🏆,
+    🎲, 🔥, ✕) showed as tofu because a custom `FontFamily` doesn't fall back to the color-emoji
+    font. Replaced them all with Material vector icons (`Sensors`, `Group`, `EmojiEvents`,
+    `Casino`, `LocalFireDepartment`, etc.). The WinCard trophy stays an emoji drawn on a raw
+    `Canvas`, where platform font fallback renders it correctly.
+  - Removed the now-dead NumberKeypad + EditActionSheet (recent-actions editing was dropped
+    from the score-keeper, matching iOS).
+  - Verified each redesigned screen on the Pixel 7 (API 35) emulator via seeded game states.

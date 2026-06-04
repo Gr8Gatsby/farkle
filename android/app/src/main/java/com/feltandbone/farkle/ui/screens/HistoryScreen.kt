@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -246,13 +249,17 @@ private fun GameRow(game: Game, onClick: () -> Unit) {
         }
 
         if (winner != null) {
-            Text(
-                text = "🏆 ${firstName(winner.name)} · ${winner.bankedScore.grouped()}",
-                color = Crimson,
-                fontFamily = PlexSans,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.EmojiEvents, null, tint = Crimson, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = "${firstName(winner.name)} · ${winner.bankedScore.grouped()}",
+                    color = Crimson,
+                    fontFamily = PlexSans,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                )
+            }
         }
     }
 }
