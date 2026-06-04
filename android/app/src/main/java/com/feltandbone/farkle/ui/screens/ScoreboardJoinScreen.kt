@@ -56,6 +56,7 @@ import com.feltandbone.farkle.net.FarkleClient
 import com.feltandbone.farkle.net.PlayerClaim
 import com.feltandbone.farkle.ui.components.Avatar
 import com.feltandbone.farkle.ui.components.Caption
+import com.feltandbone.farkle.ui.components.CountingNumber
 import com.feltandbone.farkle.ui.components.DisplayTitle
 import com.feltandbone.farkle.ui.components.Eyebrow
 import com.feltandbone.farkle.ui.components.firstName
@@ -299,7 +300,7 @@ private fun StandingsRow(game: Game, player: Player, rank: Int, myId: String?, o
                 Text("+${pending.grouped()}", color = Gold, fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 11.sp)
             }
         }
-        Text(player.bankedScore.grouped(), color = Paper, fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = if (isActive) 28.sp else 18.sp)
+        CountingNumber(value = player.bankedScore, fontSize = if (isActive) 28.sp else 18.sp, color = Paper)
         Spacer(Modifier.width(8.dp))
         Box(Modifier.clip(RoundedCornerShape(5.dp)).background(if (rank == 1) Gold.copy(alpha = 0.8f) else Paper.copy(alpha = 0.08f)).padding(horizontal = 6.dp, vertical = 3.dp)) {
             Text(ordinal(rank), color = if (rank == 1) Walnut else Paper.copy(alpha = 0.6f), fontFamily = JetBrainsMono, fontWeight = FontWeight.Bold, fontSize = 10.sp)

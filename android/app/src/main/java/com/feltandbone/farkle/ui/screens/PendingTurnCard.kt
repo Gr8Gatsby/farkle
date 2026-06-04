@@ -1,10 +1,5 @@
 package com.feltandbone.farkle.ui.screens
 
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feltandbone.farkle.model.Game
+import com.feltandbone.farkle.ui.components.CountingNumber
 import com.feltandbone.farkle.ui.components.ValueChip
-import com.feltandbone.farkle.ui.components.grouped
 import com.feltandbone.farkle.ui.theme.Crimson
 import com.feltandbone.farkle.ui.theme.Ink
 import com.feltandbone.farkle.ui.theme.Ink3
@@ -95,19 +90,7 @@ fun PendingTurnCard(
         }
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.Bottom) {
-            AnimatedContent(
-                targetState = pending,
-                transitionSpec = { (fadeIn(tween(250)) togetherWith fadeOut(tween(250))) },
-                label = "pending",
-            ) { value ->
-                Text(
-                    value.grouped(),
-                    color = Ink,
-                    fontFamily = JetBrainsMono,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 48.sp,
-                )
-            }
+            CountingNumber(value = pending, fontSize = 48.sp, color = Ink)
             Spacer(Modifier.width(8.dp))
             Text("pending", color = Ink3, fontFamily = PlexSans, fontSize = 13.sp, modifier = Modifier.padding(bottom = 10.dp))
             Spacer(Modifier.weight(1f))

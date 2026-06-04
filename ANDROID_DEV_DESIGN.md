@@ -91,6 +91,11 @@ and structure only.
   - Removed the now-dead NumberKeypad + EditActionSheet (recent-actions editing was dropped
     from the score-keeper, matching iOS).
   - Verified each redesigned screen on the Pixel 7 (API 35) emulator via seeded game states.
+- 2026-06-04 — Added a `CountingNumber` component (parity with iOS `AnimatedScoreText` /
+  `CountUpScore`): scores now *count* up/down through the intermediate values when they change
+  (EaseOutCubic, ~600ms) instead of snapping. Applied to the active-game standings, the
+  pending-turn total, and the scoreboard joiner's standings. (Game Over already counted the
+  winner's score up.)
 - 2026-06-03 — **Two-emulator live-join test.** Ran a host on one AVD and a joiner on a
   second AVD. Findings: NSD/mDNS discovery *does* cross between emulators (the joiner found
   `Farkle-<code>` and listed the room), but the WebSocket connect failed with `ECONNREFUSED`

@@ -57,6 +57,7 @@ import com.feltandbone.farkle.model.Game
 import com.feltandbone.farkle.model.Player
 import com.feltandbone.farkle.ui.AppViewModel
 import com.feltandbone.farkle.ui.components.Avatar
+import com.feltandbone.farkle.ui.components.CountingNumber
 import com.feltandbone.farkle.ui.components.grouped
 import com.feltandbone.farkle.ui.theme.Gold
 import com.feltandbone.farkle.ui.theme.Ink
@@ -388,12 +389,10 @@ private fun PlayerRow(game: Game, player: Player, rank: Int) {
                 Box(Modifier.fillMaxWidth(pct).height(3.dp).clip(RoundedCornerShape(50)).background(if (isActive) Gold else Walnut))
             }
             Spacer(Modifier.width(10.dp))
-            Text(
-                player.bankedScore.grouped(),
-                color = scoreColor,
-                fontFamily = JetBrainsMono,
-                fontWeight = FontWeight.Bold,
+            CountingNumber(
+                value = player.bankedScore,
                 fontSize = if (isActive) 24.sp else 15.sp,
+                color = scoreColor,
                 modifier = Modifier.widthIn(min = 40.dp),
             )
             Spacer(Modifier.width(8.dp))

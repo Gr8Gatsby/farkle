@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -136,6 +138,41 @@ fun ValueChip(
     ) {
         Text(label, color = fg, fontFamily = JetBrainsMono, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
     }
+}
+
+/**
+ * A number that animates by *counting* through the intermediate values when it changes,
+ * instead of snapping. Parity with iOS `AnimatedScoreText` / `CountUpScore`.
+ * Set [countFromZeroOnAppear] for the game-over reveal.
+ */
+@Composable
+fun CountingNumber(
+    value: Int,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontFamily: androidx.compose.ui.text.font.FontFamily = JetBrainsMono,
+    fontWeight: FontWeight = FontWeight.Bold,
+    letterSpacing: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    durationMillis: Int = 600,
+    countFromZeroOnAppear: Boolean = false,
+) {
+    var target by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(if (countFromZeroOnAppear) 0 else value) }
+    androidx.compose.runtime.LaunchedEffect(value) { target = value }
+    val animated by androidx.compose.animation.core.animateIntAsState(
+        targetValue = target,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis, easing = androidx.compose.animation.core.EaseOutCubic),
+        label = "count",
+    )
+    Text(
+        animated.grouped(),
+        modifier = modifier,
+        color = color,
+        fontFamily = fontFamily,
+        fontWeight = fontWeight,
+        fontSize = fontSize,
+        letterSpacing = letterSpacing,
+    )
 }
 
 /** Small eyebrow / pill label. */
