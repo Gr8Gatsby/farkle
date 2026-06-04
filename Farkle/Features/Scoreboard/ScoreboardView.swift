@@ -108,9 +108,7 @@ struct ScoreboardView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     if snap.isInFinalRound { finalRoundBanner(snap: snap) }
-                    yourTurnBanner(snap: snap)
-                    playersGrid(snap: snap)
-                    pendingTurnIndicator(snap: snap)
+                    standingsList(snap: snap)
                     feedSection
                     Color.clear.frame(height: 12)
                 }
@@ -155,175 +153,238 @@ struct ScoreboardView: View {
         .padding(.bottom, 8)
     }
 
-    @ViewBuilder
-    private func yourTurnBanner(snap: GameSnapshot) -> some View {
-        if case .player(let myID) = identity, myID == snap.activePlayerID {
-            HStack(spacing: 12) {
-                Image(systemName: "hand.point.up.left.fill")
-                    .font(.system(size: 18, weight: .semibold))
+    private func finalRoundBanner(snap: GameSnapshot) -> some View {
+        let active = snap.players.first(where: { $0.id == snap.activePlayerID })
+        let bar = snap.scoreToBeat ?? snap.targetScore
+        let needs = active.map { bar - $0.bankedScore + 50 }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                Image(systemName: "flag.checkered")
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(Color.walnut)
-                    .frame(width: 36, height: 36)
-                    .background(Color.paper)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("IT'S YOUR TURN")
-                        .font(.mono(10, weight: .bold))
+                    .frame(width: 48, height: 48)
+                    .background(Color.gold)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("FINAL ROUND")
+                        .font(.mono(11, weight: .bold))
                         .tracking(1.6)
-                        .foregroundStyle(Color.walnut)
-                    Text("Roll, then tell the scorekeeper what you got.")
-                        .font(.ui(12))
-                        .foregroundStyle(Color.walnut.opacity(0.85))
+                        .foregroundStyle(Color.gold)
+                    if let active, let needs, needs > 0 {
+                        Text("\(active.name) needs \(needs.formatted()) to win")
+                            .font(.ui(18, weight: .bold))
+                            .foregroundStyle(Color.paper)
+                    }
                 }
                 Spacer()
             }
-            .padding(12)
-            .background(LinearGradient(colors: [Color.gold, Color.gold2],
-                                       startPoint: .leading, endPoint: .trailing))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: Color.gold.opacity(0.4), radius: 10)
-            .transition(.scale.combined(with: .opacity))
-        }
-    }
-
-    private func finalRoundBanner(snap: GameSnapshot) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "flag.checkered")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(Color.walnut)
-                .frame(width: 36, height: 36)
-                .background(Color.gold)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            VStack(alignment: .leading, spacing: 1) {
-                Text("FINAL ROUND · \(snap.finalRoundTurnsRemaining) LEFT")
-                    .font(.mono(10, weight: .bold))
-                    .tracking(1.6)
-                    .foregroundStyle(Color.gold)
-                if let bar = snap.scoreToBeat {
-                    Text("Beat \(bar.formatted()) to win.")
-                        .font(.ui(13, weight: .semibold))
-                        .foregroundStyle(Color.paper)
-                }
+            if let needs, needs > 0, let active {
+                Text(comboSuggestion(needed: needs, seed: active.id))
+                    .font(.display(16, italic: true))
+                    .foregroundStyle(Color.paper.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer()
         }
-        .padding(12)
+        .padding(16)
         .background(Color.black.opacity(0.30))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(Color.gold.opacity(0.45), lineWidth: 1)
         )
     }
 
-    private func playersGrid(snap: GameSnapshot) -> some View {
-        let columns = snap.players.count <= 4 ? 2 : 2
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: columns), spacing: 10) {
-            ForEach(snap.players.sorted(by: { $0.orderIndex < $1.orderIndex })) { p in
-                playerCard(player: p, snap: snap)
-                    .id(p.id)
+    private func comboSuggestion(needed: Int, seed: UUID) -> String {
+        struct Hand {
+            let name: String
+            let plural: String
+            let value: Int
+        }
+
+        let hands: [Hand] = [
+            Hand(name: "six-of-a-kind", plural: "six-of-a-kinds", value: 3000),
+            Hand(name: "two triplets", plural: "double triplets", value: 2500),
+            Hand(name: "five-of-a-kind", plural: "five-of-a-kinds", value: 2000),
+            Hand(name: "a straight", plural: "straights", value: 1500),
+            Hand(name: "three pairs", plural: "three-pair rolls", value: 1500),
+            Hand(name: "four-of-a-kind", plural: "four-of-a-kinds", value: 1000),
+            Hand(name: "three 6s", plural: "triple 6s", value: 600),
+            Hand(name: "three 5s", plural: "triple 5s", value: 500),
+            Hand(name: "three 4s", plural: "triple 4s", value: 400),
+            Hand(name: "three 3s", plural: "triple 3s", value: 300),
+            Hand(name: "three 1s", plural: "triple 1s", value: 300),
+            Hand(name: "three 2s", plural: "triple 2s", value: 200),
+        ]
+
+        var rng = SeededRNG(seed: seed.hashValue)
+        var shuffled = hands.shuffled(using: &rng)
+        var remaining = needed
+        var picks: [(String, Int)] = []
+
+        while remaining > 0 && !shuffled.isEmpty && picks.count < 4 {
+            if let idx = shuffled.firstIndex(where: { $0.value <= remaining }) {
+                let hand = shuffled[idx]
+                if let existing = picks.firstIndex(where: { $0.0 == hand.name }) {
+                    picks[existing].1 += 1
+                    remaining -= hand.value
+                } else {
+                    picks.append((hand.name, 1))
+                    remaining -= hand.value
+                }
+            } else {
+                shuffled.removeFirst()
             }
         }
+
+        if remaining > 0 {
+            let ones = (remaining + 99) / 100
+            if ones == 1 {
+                picks.append(("a lucky 1", 1))
+            } else {
+                picks.append(("\(ones) lucky 1s", 1))
+            }
+        }
+
+        let parts = picks.map { name, count -> String in
+            if count == 1 { return name }
+            let hand = hands.first(where: { $0.name == name })
+            return "\(count) \(hand?.plural ?? name)"
+        }
+
+        let combo: String
+        if parts.count == 1 {
+            combo = parts[0]
+        } else {
+            combo = parts.dropLast().joined(separator: ", ") + ", and " + parts.last!
+        }
+
+        let prefixes = [
+            "Just roll ", "All you need is ", "Easy — just roll ",
+            "No big deal, just ", "Simple — ",
+        ]
+        let suffixes = [
+            " Easy!", " No sweat.", " Simple.", " What could go wrong?",
+            " Totally doable.", " You got this.",
+        ]
+        let prefix = prefixes[abs(seed.hashValue) % prefixes.count]
+        let suffix = suffixes[abs(seed.hashValue / 7) % suffixes.count]
+
+        return "\(prefix)\(combo).\(suffix)"
     }
 
-    private func playerCard(player: PlayerSnapshot, snap: GameSnapshot) -> some View {
+    // MARK: - Standings list
+
+    private func standingsList(snap: GameSnapshot) -> some View {
+        let ranked = snap.players.sorted { $0.bankedScore > $1.bankedScore }
+        return VStack(spacing: 0) {
+            ForEach(Array(ranked.enumerated()), id: \.element.id) { idx, player in
+                standingsRow(player: player, rank: idx + 1, snap: snap)
+                if idx < ranked.count - 1 {
+                    Rectangle().fill(Color.paper.opacity(0.06)).frame(height: 0.5)
+                }
+            }
+        }
+        .background(Color.black.opacity(0.22))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.paper.opacity(0.06), lineWidth: 0.5)
+        )
+    }
+
+    private func standingsRow(player: PlayerSnapshot, rank: Int, snap: GameSnapshot) -> some View {
         let isActive = player.id == snap.activePlayerID
         let isMe = identity == .player(player.id)
         let pending = isActive ? snap.pendingTurnScore : 0
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
+        let avatarSize: CGFloat = isActive ? 40 : 28
+
+        return HStack(spacing: 10) {
+            ZStack {
                 AvatarView(name: player.name,
                            colorIndex: player.avatarIndex,
-                           size: 30,
+                           size: avatarSize,
                            active: isActive,
                            photoData: snap.photoData(for: player.id))
-                    .onTapGesture {
-                        if isMe { photoPickerPlayer = player }
-                    }
-                Text(player.name)
-                    .font(.ui(13, weight: .semibold))
-                    .foregroundStyle(Color.paper)
-                if isMe {
-                    Text("YOU")
-                        .font(.mono(8, weight: .bold))
-                        .tracking(0.6)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.paper)
-                        .foregroundStyle(Color.felt)
-                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-                }
-                Spacer(minLength: 4)
-                if isActive {
-                    Text("ROLLING")
-                        .font(.mono(8, weight: .bold))
-                        .tracking(0.6)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.gold)
-                        .foregroundStyle(Color.walnut)
-                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-                }
-            }
-            AnimatedScoreText(value: player.bankedScore, size: 34)
-                .animation(.easeInOut(duration: 0.6), value: player.bankedScore)
-            if pending > 0 {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 9, weight: .bold))
-                    Text(pending.formatted())
-                        .font(.mono(11, weight: .bold))
-                }
-                .foregroundStyle(Color.gold)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.gold.opacity(0.18))
-                .clipShape(Capsule())
-                .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.black.opacity(isActive ? 0.35 : 0.22))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(borderColor(isActive: isActive, isMe: isMe),
-                        lineWidth: (isActive || isMe) ? 1.5 : 0.5)
-        )
-        .shadow(color: isActive ? Color.gold.opacity(0.4) : .clear, radius: isActive ? 12 : 0)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isActive)
-        .animation(.easeInOut(duration: 0.25), value: pending)
-    }
-
-    private func borderColor(isActive: Bool, isMe: Bool) -> Color {
-        if isActive { return Color.gold.opacity(0.85) }
-        if isMe { return Color.paper.opacity(0.55) }
-        return Color.paper.opacity(0.06)
-    }
-
-    @ViewBuilder
-    private func pendingTurnIndicator(snap: GameSnapshot) -> some View {
-        if let activeID = snap.activePlayerID,
-           let active = snap.players.first(where: { $0.id == activeID }),
-           snap.pendingTurnScore > 0 {
-            HStack(spacing: 10) {
-                Image(systemName: "dice")
-                    .font(.system(size: 14, weight: .semibold))
+                    .opacity(isActive ? 0 : 1)
+                    .onTapGesture { if isMe { photoPickerPlayer = player } }
+                Image(systemName: "dice.fill")
+                    .font(.system(size: avatarSize * 0.55, weight: .semibold))
                     .foregroundStyle(Color.gold)
-                Text("\(active.name) has")
-                    .font(.ui(12))
-                    .foregroundStyle(Color.paper.opacity(0.75))
-                AnimatedScoreText(value: snap.pendingTurnScore, size: 18, color: Color.gold2)
-                    .animation(.easeInOut(duration: 0.35), value: snap.pendingTurnScore)
-                Text("pending")
-                    .font(.ui(12))
-                    .foregroundStyle(Color.paper.opacity(0.75))
-                Spacer()
+                    .frame(width: avatarSize, height: avatarSize)
+                    .opacity(isActive ? 1 : 0)
             }
-            .padding(12)
-            .background(Color.black.opacity(0.2))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .frame(width: avatarSize, height: avatarSize)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(player.name)
+                        .font(isActive ? .ui(16, weight: .bold) : .ui(14, weight: .medium))
+                        .foregroundStyle(Color.paper)
+                    if isMe {
+                        Text("YOU")
+                            .font(.mono(8, weight: .bold))
+                            .tracking(0.6)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.paper)
+                            .foregroundStyle(Color.felt)
+                            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                    }
+                }
+                if isActive, pending > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 9, weight: .bold))
+                        Text(pending.formatted())
+                            .font(.mono(11, weight: .bold))
+                    }
+                    .foregroundStyle(Color.gold)
+                    .transition(.scale.combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.25), value: pending)
+                }
+            }
+
+            Spacer()
+
+            AnimatedScoreText(value: player.bankedScore,
+                              size: isActive ? 28 : 18,
+                              color: .paper)
+                .animation(.easeInOut(duration: 0.6), value: player.bankedScore)
+
+            Text(ordinal(rank))
+                .font(.mono(10, weight: .bold))
+                .foregroundStyle(rank == 1 ? Color.walnut : Color.paper.opacity(0.6))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(rank == 1 ? Color.gold.opacity(0.8) : Color.paper.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, isActive ? 14 : 10)
+        .background(isActive ? Color.black.opacity(0.15) : Color.clear)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(isActive ? Color.gold.opacity(0.6) : Color.clear, lineWidth: 1.5)
+                .padding(2)
+        )
+        .animation(.easeInOut(duration: 0.4), value: isActive)
+    }
+
+    private func ordinal(_ n: Int) -> String {
+        let ones = n % 10
+        let tens = (n / 10) % 10
+        let suffix: String
+        if tens == 1 { suffix = "th" }
+        else {
+            switch ones {
+            case 1: suffix = "st"
+            case 2: suffix = "nd"
+            case 3: suffix = "rd"
+            default: suffix = "th"
+            }
+        }
+        return "\(n)\(suffix)"
     }
 
     private var feedSection: some View {
@@ -576,5 +637,17 @@ private struct PulsingDot: ViewModifier {
             .opacity(on ? 0.3 : 1)
             .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: on)
             .onAppear { on = true }
+    }
+}
+
+private struct SeededRNG: RandomNumberGenerator {
+    private var state: UInt64
+    init(seed: Int) { state = UInt64(bitPattern: Int64(seed)) | 1 }
+    mutating func next() -> UInt64 {
+        state &+= 0x9e3779b97f4a7c15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xbf58476d1ce4e5b9
+        z = (z ^ (z >> 27)) &* 0x94d049bb133111eb
+        return z ^ (z >> 31)
     }
 }

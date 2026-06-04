@@ -20,6 +20,9 @@ Package.resolved
 Pods/
 Carthage/Build/
 
+## Screenshots
+screenshots/
+
 ## misc
 *.log
 *.tmp
