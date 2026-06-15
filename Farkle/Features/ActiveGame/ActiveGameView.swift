@@ -10,12 +10,10 @@ struct ActiveGameView: View {
     @State private var showBankConfirm = false
     @State private var showBustConfirm = false
     @State private var showScoreHelper = false
-    @State private var showKeypad = false
     @State private var showExitConfirm = false
     @State private var showInvite = false
     @State private var showEditPlayers = false
     @State private var markHotDice = false
-    @State private var actionBeingEdited: ActionLogEntry?
     @State private var netSession = FarkleNetSession()
 
     private var engine: GameEngine { GameEngine(game: game, context: context) }
@@ -50,21 +48,9 @@ struct ActiveGameView: View {
                     topBar
                     ScrollView {
                         VStack(spacing: 14) {
-                            NowRollingBanner(game: game, session: netSession)
-                            PendingTurnCard(
-                                game: game,
-                                onQuickAdd: { engine.addToPending($0) },
-                                onClear: { engine.clearPending() },
-                                onOpenHelper: { showScoreHelper = true },
-                                onOpenKeypad: { showKeypad = true },
-                                onFarkle: { showBustConfirm = true }
-                            )
                             StandingsLadder(game: game,
                                             session: netSession,
                                             onEdit: { showEditPlayers = true })
-                            RecentActionsLog(game: game,
-                                             onTap: { entry in actionBeingEdited = entry },
-                                             session: netSession)
                             Color.clear.frame(height: 8)
                         }
                         .padding(.horizontal, 14)
@@ -72,7 +58,17 @@ struct ActiveGameView: View {
                     }
                     .scrollIndicators(.hidden)
 
+                    PendingTurnCard(
+                        game: game,
+                        onQuickAdd: { engine.addToPending($0) },
+                        onClear: { engine.clearPending() },
+                        onFarkle: { showBustConfirm = true }
+                    )
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+
                     bottomBar
+                    scoreHelperLink
                 }
             }
             .sheet(isPresented: $showBankConfirm) {
@@ -114,37 +110,6 @@ struct ActiveGameView: View {
                     onCancel: { showScoreHelper = false }
                 )
                 .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.paper)
-            }
-            .sheet(isPresented: $showKeypad) {
-                KeypadSheet(
-                    initial: 0,
-                    onAdd: { value in
-                        engine.addToPending(value)
-                        showKeypad = false
-                    },
-                    onCancel: { showKeypad = false }
-                )
-                .presentationDetents([.fraction(0.55)])
-                .presentationBackground(Color.paper)
-            }
-            .sheet(item: $actionBeingEdited) { entry in
-                EditActionSheet(
-                    game: game,
-                    action: entry,
-                    onSave: { newAmount in
-                        engine.setActionAmount(actionID: entry.id, newAmount: newAmount)
-                        actionBeingEdited = nil
-                    },
-                    onUndo: {
-                        engine.undo(actionID: entry.id)
-                        actionBeingEdited = nil
-                    },
-                    onCancel: { actionBeingEdited = nil },
-                    session: netSession
-                )
-                .presentationDetents([.fraction(0.7)])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.paper)
             }
@@ -241,6 +206,8 @@ struct ActiveGameView: View {
                         let newTotal = player.bankedScore + game.pendingTurnScore
                         Text("+\(game.pendingTurnScore) → \(newTotal.formatted())")
                             .font(.display(20, italic: true))
+                            .contentTransition(.numericText(value: Double(game.pendingTurnScore)))
+                            .animation(.easeOut(duration: 0.35), value: game.pendingTurnScore)
                         if let bar = game.scoreToBeat {
                             Text(finalRoundHint(newTotal: newTotal, bar: bar))
                                 .font(.ui(10, weight: .semibold))
@@ -273,7 +240,22 @@ struct ActiveGameView: View {
         .opacity(canBank ? 1 : 0.55)
         .padding(.horizontal, 14)
         .padding(.top, 12)
-        .padding(.bottom, 28)
+        .padding(.bottom, 8)
+    }
+
+    private var scoreHelperLink: some View {
+        Button {
+            showScoreHelper = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "die.face.5")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Score helper")
+                    .font(.ui(13, weight: .semibold))
+            }
+            .foregroundStyle(Color.walnut)
+        }
+        .padding(.bottom, 20)
     }
 
     @ViewBuilder

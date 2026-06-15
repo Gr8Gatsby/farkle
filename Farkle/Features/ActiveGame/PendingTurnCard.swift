@@ -4,11 +4,10 @@ struct PendingTurnCard: View {
     @Bindable var game: Game
     var onQuickAdd: (Int) -> Void
     var onClear: () -> Void
-    var onOpenHelper: () -> Void
-    var onOpenKeypad: () -> Void
     var onFarkle: () -> Void
 
-    private let chips = [50, 100, 150, 200, 300, 350, 500, 1000]
+    private let chips = [50, 100, 200, 300, 350, 500, 1000, 1500]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -18,55 +17,34 @@ struct PendingTurnCard: View {
                     .tracking(1.4)
                     .foregroundStyle(Color.ink3)
                 Spacer()
-                Text("\(game.pendingRollCount) roll\(game.pendingRollCount == 1 ? "" : "s")")
-                    .font(.mono(10))
-                    .foregroundStyle(Color.ink3)
+                HStack(spacing: 8) {
+                    Text("\(game.pendingRollCount) roll\(game.pendingRollCount == 1 ? "" : "s")")
+                        .font(.mono(10))
+                        .foregroundStyle(Color.ink3)
+                    if game.pendingTurnScore > 0 {
+                        Button("Clear") { onClear() }
+                            .font(.ui(12, weight: .semibold))
+                            .foregroundStyle(Color.ink3)
+                    }
+                }
             }
+
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(chips, id: \.self) { v in
+                    Button { onQuickAdd(v) } label: {
+                        Text("\(v)")
+                    }
+                    .buttonStyle(ChipButtonStyle(fullWidth: true))
+                }
+            }
+
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 BigScoreText(value: game.pendingTurnScore, size: 48, color: .ink)
+                    .contentTransition(.numericText(value: Double(game.pendingTurnScore)))
+                    .animation(.easeOut(duration: 0.35), value: game.pendingTurnScore)
                 Text("pending")
                     .font(.ui(13))
                     .foregroundStyle(Color.ink3)
-                Spacer()
-                if game.pendingTurnScore > 0 {
-                    Button("Clear") { onClear() }
-                        .font(.ui(12, weight: .semibold))
-                        .foregroundStyle(Color.ink3)
-                }
-            }
-
-            // Quick-add chips
-            FlowLayout(spacing: 8) {
-                ForEach(chips, id: \.self) { v in
-                    Button { onQuickAdd(v) } label: {
-                        Text("+\(v)")
-                    }
-                    .buttonStyle(ChipButtonStyle())
-                }
-                Button {
-                    onOpenKeypad()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.forwardslash.minus")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Custom")
-                    }
-                }
-                .buttonStyle(ChipButtonStyle())
-            }
-
-            HStack(spacing: 12) {
-                Button {
-                    onOpenHelper()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "die.face.5")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("Score helper")
-                            .font(.ui(13, weight: .semibold))
-                    }
-                    .foregroundStyle(Color.walnut)
-                }
                 Spacer()
                 farkleButton
             }
@@ -82,19 +60,15 @@ struct PendingTurnCard: View {
         Button {
             onFarkle()
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 13, weight: .bold))
-                Text("FARKLE")
-                    .font(.ui(11, weight: .bold))
-                    .tracking(1.0)
-            }
-            .foregroundStyle(Color.paper)
-            .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(Color.crimson)
-            .clipShape(Capsule())
-            .shadow(color: Color.crimson.opacity(0.40), radius: 0, x: 0, y: 2)
+            Text("FARKLE")
+                .font(.ui(16, weight: .bold))
+                .tracking(1.4)
+                .foregroundStyle(Color.paper)
+                .padding(.horizontal, 24)
+                .frame(height: 52)
+                .background(Color.crimson)
+                .clipShape(Capsule())
+                .shadow(color: Color.crimson.opacity(0.40), radius: 0, x: 0, y: 2)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Farkle — bust this turn")

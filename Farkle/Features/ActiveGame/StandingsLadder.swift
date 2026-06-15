@@ -29,63 +29,140 @@ struct StandingsLadder: View {
             }
             .padding(.horizontal, 4)
 
-            let sorted = game.orderedPlayers.sorted { $0.bankedScore > $1.bankedScore }
+            let ordered = game.orderedPlayers
+            let ranks = scoreRanks(players: ordered)
             VStack(spacing: 0) {
-                ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, player in
-                    row(rank: idx + 1, player: player)
-                    if idx < sorted.count - 1 {
-                        Rectangle().fill(Color.walnut.opacity(0.08)).frame(height: 0.5).padding(.leading, 14)
+                ForEach(Array(ordered.enumerated()), id: \.element.id) { idx, player in
+                    let rank = ranks[player.id] ?? (idx + 1)
+                    playerRow(player: player, rank: rank)
+                    if idx < ordered.count - 1 {
+                        Rectangle().fill(Color.walnut.opacity(0.08)).frame(height: 0.5)
                     }
                 }
             }
             .background(Color.paperSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(Color.walnut.opacity(0.10), lineWidth: 0.5)
             )
         }
     }
 
-    private func row(rank: Int, player: Player) -> some View {
+    // MARK: - Unified player row
+
+    private func playerRow(player: Player, rank: Int) -> some View {
         let isActive = player.id == game.activePlayer?.id
         let pct = min(1.0, Double(player.bankedScore) / Double(max(1, game.targetScore)))
-        return HStack(spacing: 10) {
-            Text("\(rank)")
-                .font(.mono(11, weight: .bold))
-                .foregroundStyle(Color.ink3.opacity(0.7))
-                .frame(width: 14)
-            AvatarView(name: player.name,
-                       colorIndex: player.avatarIndex,
-                       size: 22,
-                       photoData: session?.photoData(for: player.id))
-            HStack(spacing: 6) {
-                Text(player.name)
-                    .font(.ui(13, weight: .medium))
-                    .foregroundStyle(Color.ink)
-                if isActive {
-                    Text("ROLLING")
-                        .font(.mono(8, weight: .bold))
-                        .tracking(0.6)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.gold)
-                        .foregroundStyle(Color.walnut)
-                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+
+        let avatarSize: CGFloat = isActive ? 44 : 28
+        let vPad: CGFloat = isActive ? 14 : 10
+        let nameColor = isActive ? Color.walnutInk : Color.ink
+        let scoreColor = isActive ? Color.walnutInk : Color.ink
+        let bgColor = isActive ? Color.walnut : Color.clear
+        let barFill = isActive ? Color.gold : Color.walnut
+
+        return VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                ZStack {
+                    AvatarView(name: player.name,
+                               colorIndex: player.avatarIndex,
+                               size: avatarSize,
+                               active: isActive,
+                               photoData: session?.photoData(for: player.id))
+                        .opacity(isActive ? 0 : 1)
+                    Image(systemName: "dice.fill")
+                        .font(.system(size: avatarSize * 0.55, weight: .semibold))
+                        .foregroundStyle(Color.gold)
+                        .frame(width: avatarSize, height: avatarSize)
+                        .opacity(isActive ? 1 : 0)
                 }
+                .frame(width: avatarSize, height: avatarSize)
+
+                Text(player.name)
+                    .font(isActive ? .display(26, italic: true) : .ui(15, weight: .medium))
+                    .foregroundStyle(nameColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+
+                Spacer()
+
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.walnut.opacity(0.12)).frame(width: 50, height: 3)
+                    Capsule()
+                        .fill(barFill)
+                        .frame(width: 50 * pct, height: 3)
+                }
+
+                MonoScoreText(value: player.bankedScore,
+                              size: isActive ? 24 : 15,
+                              weight: .bold,
+                              color: scoreColor)
+                    .frame(minWidth: 40, alignment: .trailing)
+
+                rankBadge(rank, active: isActive)
             }
-            Spacer()
-            // mini progress bar
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.walnut.opacity(0.12)).frame(width: 50, height: 3)
-                Capsule()
-                    .fill(isActive ? Color.gold : Color.walnut)
-                    .frame(width: 50 * pct, height: 3)
+            .padding(.horizontal, 14)
+            .padding(.vertical, vPad)
+            .background(bgColor)
+
+            if isActive {
+                GeometryReader { proxy in
+                    Capsule()
+                        .fill(Color.gold)
+                        .frame(width: proxy.size.width * pct, height: 3)
+                }
+                .frame(height: 3)
+                .background(Color.walnut.opacity(0.15))
+                .transition(.opacity)
             }
-            MonoScoreText(value: player.bankedScore, size: 13, weight: .bold, color: .ink)
-                .frame(minWidth: 56, alignment: .trailing)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .animation(.easeInOut(duration: 0.45), value: isActive)
+    }
+
+    // MARK: - Helpers
+
+    private func scoreRanks(players: [Player]) -> [UUID: Int] {
+        let sorted = players.sorted { $0.bankedScore > $1.bankedScore }
+        var ranks: [UUID: Int] = [:]
+        for (i, p) in sorted.enumerated() {
+            if i > 0, sorted[i - 1].bankedScore == p.bankedScore {
+                ranks[p.id] = ranks[sorted[i - 1].id]!
+            } else {
+                ranks[p.id] = i + 1
+            }
+        }
+        return ranks
+    }
+
+    private func rankBadge(_ rank: Int, active: Bool) -> some View {
+        Text(ordinal(rank))
+            .font(.mono(10, weight: .bold))
+            .foregroundStyle(active
+                             ? Color.walnutInk.opacity(0.8)
+                             : (rank == 1 ? Color.walnut : Color.ink3))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(active
+                        ? Color.walnutInk.opacity(0.12)
+                        : (rank == 1 ? Color.gold.opacity(0.25) : Color.walnut.opacity(0.08)))
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+    }
+
+    private func ordinal(_ n: Int) -> String {
+        let suffix: String
+        let ones = n % 10
+        let tens = (n / 10) % 10
+        if tens == 1 {
+            suffix = "th"
+        } else {
+            switch ones {
+            case 1: suffix = "st"
+            case 2: suffix = "nd"
+            case 3: suffix = "rd"
+            default: suffix = "th"
+            }
+        }
+        return "\(n)\(suffix)"
     }
 }
