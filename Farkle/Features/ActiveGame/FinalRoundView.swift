@@ -65,7 +65,6 @@ struct FinalRoundView: View {
                     markHotDice = false
                     showBankConfirm = false
                 },
-                onCancel: { showBankConfirm = false },
                 session: session
             )
             .presentationDetents([.medium])
@@ -78,8 +77,7 @@ struct FinalRoundView: View {
                     engine.bust()
                     markHotDice = false
                     showBustConfirm = false
-                },
-                onCancel: { showBustConfirm = false }
+                }
             )
             .presentationDetents([.fraction(0.4)])
             .presentationBackground(Color.paper)

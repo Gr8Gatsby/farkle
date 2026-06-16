@@ -1,16 +1,17 @@
 import SwiftUI
+import UIKit
 
 struct BankConfirmSheet: View {
     let game: Game
     let hotDice: Bool
     var onConfirm: () -> Void
-    var onCancel: () -> Void
     var session: FarkleNetSession? = nil
 
     private let autoBankDuration: Double = 5
+    private let tick: Double = 0.05
 
-    @State private var secondsLeft = 5
-    @State private var progress: CGFloat = 1
+    @State private var remaining: Double = 5
+    @State private var paused = false
 
     var body: some View {
         guard let player = game.activePlayer else {
@@ -23,7 +24,7 @@ struct BankConfirmSheet: View {
         let willWinNow = willEndGame && now > (game.scoreToBeat ?? game.targetScore)
         let nextPlayerName = nextPlayer()?.name
 
-        let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+        let timer = Timer.publish(every: tick, on: .main, in: .common).autoconnect()
 
         return AnyView(
             VStack(spacing: 0) {
@@ -50,21 +51,7 @@ struct BankConfirmSheet: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 12)
 
-                HStack(spacing: 8) {
-                    Button("Keep rolling") {
-                        onCancel()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.clear)
-                    .foregroundStyle(Color.ink)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
-                    )
-                    .font(.ui(14, weight: .semibold))
-
+                HStack(spacing: 12) {
                     Button {
                         onConfirm()
                     } label: {
@@ -74,41 +61,65 @@ struct BankConfirmSheet: View {
                                       nextPlayerName: nextPlayerName))
                     }
                     .buttonStyle(WalnutButtonStyle(size: .regular, fullWidth: true))
-                    .overlay(alignment: .bottom) {
-                        GeometryReader { proxy in
-                            Capsule()
-                                .fill(Color.walnutInk.opacity(0.25))
-                                .frame(width: proxy.size.width * progress, height: 3)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .frame(height: 3)
-                        .clipShape(Capsule())
-                        .padding(.horizontal, 4)
-                        .offset(y: -6)
-                    }
+
+                    autoBankDial
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
-                .padding(.bottom, 20)
 
-                Text("Auto-banking in \(secondsLeft)s")
-                    .font(.mono(10))
-                    .foregroundStyle(Color.ink3)
-                    .padding(.bottom, 12)
-            }
-            .onAppear {
-                withAnimation(.linear(duration: autoBankDuration)) {
-                    progress = 0
-                }
+                Text(paused
+                     ? "Paused — tap the dial to resume"
+                     : "Auto-banks when the dial runs out · tap it to pause")
+                    .font(.ui(10))
+                    .foregroundStyle(paused ? Color.walnut : Color.ink3)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
             }
             .onReceive(timer) { _ in
-                if secondsLeft > 1 {
-                    secondsLeft -= 1
-                } else {
-                    onConfirm()
-                }
+                guard !paused else { return }
+                remaining -= tick
+                if remaining <= 0 { onConfirm() }
             }
         )
+    }
+
+    // MARK: - Circular auto-bank timer
+
+    private var autoBankDial: some View {
+        let progress = max(0, min(1, remaining / autoBankDuration))
+        let secondsLeft = max(0, Int(remaining.rounded(.up)))
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) { paused.toggle() }
+            UISelectionFeedbackGenerator().selectionChanged()
+        } label: {
+            ZStack {
+                Circle()
+                    .stroke(Color.walnut.opacity(0.15), lineWidth: 4)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(paused ? Color.ink3 : Color.walnut,
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: tick), value: progress)
+                if paused {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color.walnut)
+                } else {
+                    Text("\(secondsLeft)")
+                        .font(.mono(17, weight: .bold))
+                        .foregroundStyle(Color.ink)
+                        .contentTransition(.numericText(value: Double(secondsLeft)))
+                }
+            }
+            .frame(width: 52, height: 52)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(paused
+                            ? "Resume auto-bank timer"
+                            : "Pause auto-bank timer, \(secondsLeft) seconds left")
     }
 
     private func title(player: Player, willTriggerFinal: Bool,
@@ -215,7 +226,6 @@ struct BankConfirmSheet: View {
 struct BustConfirmSheet: View {
     let game: Game
     var onConfirm: () -> Void
-    var onCancel: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -237,29 +247,16 @@ struct BustConfirmSheet: View {
                 .padding(.horizontal, 28)
                 .padding(.top, 8)
 
-            HStack(spacing: 8) {
-                Button("Keep rolling") { onCancel() }
+            Button {
+                onConfirm()
+            } label: {
+                Text("Farkle →")
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.clear)
-                    .foregroundStyle(Color.ink)
+                    .background(Color.crimson)
+                    .foregroundStyle(Color.paper)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.walnut.opacity(0.25), lineWidth: 1.5)
-                    )
                     .font(.ui(14, weight: .semibold))
-                Button {
-                    onConfirm()
-                } label: {
-                    Text("Farkle →")
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.crimson)
-                        .foregroundStyle(Color.paper)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .font(.ui(14, weight: .semibold))
-                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)

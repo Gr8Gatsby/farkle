@@ -13,7 +13,16 @@ private let kServiceType = "farkle-game"
 @Observable
 final class FarkleNetSession: NSObject {
     enum Role { case idle, host, joiner }
-    enum JoinState { case browsing, connecting, connected, disconnected, hostEnded }
+    enum JoinState { case browsing, connecting, connected, reconnecting, disconnected, hostEnded }
+
+    /// Decide what a joiner should do the moment its MultipeerConnectivity
+    /// session drops. A drop *after* the host has already broadcast an ended
+    /// game is a genuine end; every other drop (screen sleep, app backgrounded,
+    /// a transient Wi-Fi/Bluetooth blip) is recoverable, so we reconnect rather
+    /// than kicking the viewer out. Pure + nonisolated so it's unit-testable.
+    nonisolated static func joinStateAfterDrop(hostGameEnded: Bool) -> JoinState {
+        hostGameEnded ? .hostEnded : .reconnecting
+    }
 
     // MARK: observable state
     private(set) var role: Role = .idle
@@ -29,6 +38,12 @@ final class FarkleNetSession: NSObject {
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
     private var lastSentSeq: Int = 0
+
+    /// The host this joiner last connected to. Kept so we can silently
+    /// re-invite it after a transient drop.
+    private var connectedHost: DiscoveredHost?
+    /// Guards against firing overlapping re-invitations while one is pending.
+    private var reconnectInFlight = false
 
     /// On the host: accumulated player claims (photos) from connected viewers,
     /// keyed by player UUID. Merged into every outgoing snapshot.
@@ -58,7 +73,15 @@ final class FarkleNetSession: NSObject {
         lastSentSeq = 0
         latestSnapshot = initialSnapshot
 
-        let session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
+        // The host is the source of truth for everyone watching. If its screen
+        // sleeps, iOS suspends the app and drops every viewer at once — the #1
+        // cause of the "everyone got kicked" reports. Keep it awake while hosting.
+        UIApplication.shared.isIdleTimerDisabled = true
+
+        // `.optional` (rather than `.required`) lets the encryption handshake
+        // degrade gracefully instead of failing the whole connection, which
+        // measurably reduces dropped/again-and-again reconnect cycles on MPC.
+        let session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .optional)
         session.delegate = self
         self.session = session
 
@@ -114,6 +137,7 @@ final class FarkleNetSession: NSObject {
         role = .idle
         connectedPeerCount = 0
         latestSnapshot = nil
+        UIApplication.shared.isIdleTimerDisabled = false
     }
 
     // MARK: joiner
@@ -122,8 +146,14 @@ final class FarkleNetSession: NSObject {
         role = .joiner
         joinState = .browsing
         availableHosts = []
+        connectedHost = nil
+        reconnectInFlight = false
 
-        let session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .required)
+        // Keep the viewer's screen awake so a glance-able scoreboard doesn't
+        // sleep, suspend the app, and drop the connection.
+        UIApplication.shared.isIdleTimerDisabled = true
+
+        let session = MCSession(peer: myPeerID, securityIdentity: nil, encryptionPreference: .optional)
         session.delegate = self
         self.session = session
 
@@ -134,8 +164,22 @@ final class FarkleNetSession: NSObject {
     }
 
     func connect(to host: DiscoveredHost) {
+        connectedHost = host
+        reconnectInFlight = true
         joinState = .connecting
         browser?.invitePeer(host.peerID, to: session!, withContext: nil, timeout: 15)
+    }
+
+    /// Silently re-invite the host we lost. Called both immediately on a drop
+    /// (the host is usually still right there) and again whenever the browser
+    /// rediscovers it. We stay in `.reconnecting` throughout so the viewer keeps
+    /// seeing the last-known board instead of being bounced to a dead-end.
+    private func attemptReconnect() {
+        guard role == .joiner, joinState == .reconnecting,
+              let host = connectedHost, let session, !reconnectInFlight else { return }
+        reconnectInFlight = true
+        browser?.startBrowsingForPeers()
+        browser?.invitePeer(host.peerID, to: session, withContext: nil, timeout: 15)
     }
 
     func connectByCode(_ code: String) -> Bool {
@@ -166,6 +210,9 @@ final class FarkleNetSession: NSObject {
         availableHosts = []
         joinState = .disconnected
         latestSnapshot = nil
+        connectedHost = nil
+        reconnectInFlight = false
+        UIApplication.shared.isIdleTimerDisabled = false
     }
 }
 
@@ -189,16 +236,34 @@ extension FarkleNetSession: MCSessionDelegate {
             self.connectedPeerCount = session.connectedPeers.count
             switch state {
             case .connected:
+                self.reconnectInFlight = false
                 if self.role == .host, let snap = self.latestSnapshot {
-                    // Catch the new peer up with the current state.
+                    // Catch the (re)joining peer up with the current state.
                     if let data = try? JSONEncoder().encode(MultipeerMessage.snapshot(snap)) {
                         try? session.send(data, toPeers: [peerID], with: .reliable)
                     }
                 }
                 if self.role == .joiner { self.joinState = .connected }
             case .notConnected:
-                if self.role == .joiner, self.joinState == .connected {
-                    self.joinState = .hostEnded
+                self.reconnectInFlight = false
+                guard self.role == .joiner else { break }
+                switch self.joinState {
+                case .connected:
+                    // We were live and just lost the host. End only if the host
+                    // already told us the game finished; otherwise reconnect.
+                    let ended = self.latestSnapshot?.endedAt != nil
+                    self.joinState = Self.joinStateAfterDrop(hostGameEnded: ended)
+                    if self.joinState == .reconnecting { self.attemptReconnect() }
+                case .reconnecting:
+                    // A re-invite attempt failed. Stay put and wait for the
+                    // browser to rediscover the host (foundPeer re-invites).
+                    break
+                case .connecting:
+                    // The very first connect attempt failed — drop back to the
+                    // browse list so the user can pick again.
+                    self.joinState = .browsing
+                default:
+                    break
                 }
             case .connecting:
                 break
@@ -258,6 +323,14 @@ extension FarkleNetSession: MCNearbyServiceBrowserDelegate {
         Task { @MainActor in
             if !self.availableHosts.contains(where: { $0.peerID == peerID }) {
                 self.availableHosts.append(host)
+            }
+            // Auto-reconnect: if we dropped from this host and it's back on the
+            // air, re-invite it. Its MCPeerID may be new after the blip, so we
+            // match on the stable room code (falling back to the device name).
+            if self.joinState == .reconnecting, let prev = self.connectedHost,
+               host.roomCode == prev.roomCode || host.hostName == prev.hostName {
+                self.connectedHost = host
+                self.attemptReconnect()
             }
         }
     }

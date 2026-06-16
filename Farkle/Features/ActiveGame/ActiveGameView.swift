@@ -14,6 +14,7 @@ struct ActiveGameView: View {
     @State private var showInvite = false
     @State private var showEditPlayers = false
     @State private var markHotDice = false
+    @State private var isReorderingStandings = false
     @State private var netSession = FarkleNetSession()
 
     private var engine: GameEngine { GameEngine(game: game, context: context) }
@@ -50,7 +51,9 @@ struct ActiveGameView: View {
                         VStack(spacing: 14) {
                             StandingsLadder(game: game,
                                             session: netSession,
-                                            onEdit: { showEditPlayers = true })
+                                            onEdit: { showEditPlayers = true },
+                                            onReorder: { engine.reorderPlayers(by: $0) },
+                                            isReordering: $isReorderingStandings)
                             Color.clear.frame(height: 8)
                         }
                         .padding(.horizontal, 14)
@@ -71,6 +74,18 @@ struct ActiveGameView: View {
                     scoreHelperLink
                 }
             }
+            // While a Standings card is lifted, a tap ANYWHERE on the screen
+            // (off the card) cancels the reorder. Transparent, so the lifted
+            // card and board stay visible; only present mid-reorder so it never
+            // blocks normal taps.
+            .overlay {
+                if isReorderingStandings {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .ignoresSafeArea()
+                        .onTapGesture { isReorderingStandings = false }
+                }
+            }
             .sheet(isPresented: $showBankConfirm) {
                 BankConfirmSheet(
                     game: game,
@@ -80,7 +95,6 @@ struct ActiveGameView: View {
                         markHotDice = false
                         showBankConfirm = false
                     },
-                    onCancel: { showBankConfirm = false },
                     session: netSession
                 )
                 .presentationDetents([.medium])
@@ -93,8 +107,7 @@ struct ActiveGameView: View {
                         engine.bust()
                         markHotDice = false
                         showBustConfirm = false
-                    },
-                    onCancel: { showBustConfirm = false }
+                    }
                 )
                 .presentationDetents([.fraction(0.4)])
                 .presentationBackground(Color.paper)

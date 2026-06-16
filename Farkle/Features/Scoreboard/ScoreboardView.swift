@@ -57,6 +57,13 @@ struct ScoreboardView: View {
             if session.joinState == .hostEnded, snapshot?.endedAt == nil {
                 hostEndedOverlay
             }
+
+            // Transient drop: keep showing the last-known board and quietly
+            // reconnect in the background. A slim banner reassures the viewer
+            // instead of kicking them out (the old behavior).
+            if session.joinState == .reconnecting {
+                reconnectingBanner
+            }
         }
         .onChange(of: snapshot, initial: false) { _, newSnap in
             if let newSnap {
@@ -606,6 +613,36 @@ struct ScoreboardView: View {
             return "\(winner.name) won our Farkle game at \(winner.bankedScore.formatted())."
         }
         return "Farkle win!"
+    }
+
+    // MARK: - Reconnecting
+
+    private var reconnectingBanner: some View {
+        VStack {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(Color.paper)
+                Text("Reconnecting…")
+                    .font(.ui(13, weight: .semibold))
+                    .foregroundStyle(Color.paper)
+                Spacer()
+                Button("Leave") {
+                    session.leaveSession()
+                    onLeave()
+                }
+                .font(.ui(13, weight: .semibold))
+                .foregroundStyle(Color.paper.opacity(0.85))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color.black.opacity(0.55))
+            .clipShape(Capsule())
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - Host ended
