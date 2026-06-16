@@ -2,6 +2,22 @@
 
 Thanks for helping test Farkle before it ships to the App Store.
 
+## Release notes
+
+### 1.0.2 (build 4) — game-night feedback fixes
+
+What changed:
+
+- **Live scoreboard now auto-reconnects** instead of dropping viewers. If a watching phone sleeps or Wi-Fi hiccups, it quietly reconnects on its own — no manual rejoin.
+- **Removed the "Keep rolling" button** — banking auto-confirms on a countdown dial you can **tap to pause**. (Changed your mind? Undo is always there.)
+- **Press & hold a player card in the standings to drag-reorder** the turn order; tap away to cancel. The **Edit players** button is easier to spot, too.
+
+Please test:
+
+- [ ] Two phones on the same Wi-Fi — join from phone B, then **lock phone B's screen for ~20 seconds** and unlock. The scoreboard should reconnect on its own.
+- [ ] Open the Bank sheet → **tap the timer dial** to pause, tap again to resume.
+- [ ] In the standings, **press & hold a player and drag** to a new spot; try **tapping elsewhere** to cancel mid-drag.
+
 ## Install
 
 1. On your iPhone, open the **TestFlight** app (install from the App Store if you don't have it).
