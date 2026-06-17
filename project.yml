@@ -30,6 +30,7 @@ targets:
         UILaunchScreen:
           UIColorName: PaperBackground
           UIImageName: LaunchLogo
+        ITSAppUsesNonExemptEncryption: false
         NSLocalNetworkUsageDescription: "Farkle uses local networking so friends nearby can watch your score live. Nothing leaves your devices."
         NSPhotoLibraryAddUsageDescription: "Save the winner image to your Photos so you can keep or share it later."
         NSBonjourServices:
